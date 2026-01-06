@@ -61,7 +61,7 @@ public class DataLoader implements CommandLineRunner {
                     .videoPath("/videos/" + i + ".mp4")
                     .createdAt(LocalDateTime.now())
                     .location(i % 2 == 0 ? "Beograd" : "Novi Sad")
-                    .username(owners.get(i % 2).getUsername())
+                    .owner(owners.get(i % 2))
                     .build();
 
             videoPostRepository.save(videoPost);
@@ -70,7 +70,7 @@ public class DataLoader implements CommandLineRunner {
                 Comment comment = Comment.builder()
                         .content("Komentar " + j + " na VideoPost " + i)
                         .author(owners.get((i + j) % 2))
-                        .video(null) // kasnije možeš mapirati na VideoPost ako dodaš relaciju
+                        .videoPost(videoPost)
                         .build();
                 commentRepository.save(comment);
             }
