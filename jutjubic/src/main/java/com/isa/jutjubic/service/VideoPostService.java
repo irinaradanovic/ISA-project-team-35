@@ -2,7 +2,9 @@ package com.isa.jutjubic.service;
 
 import com.isa.jutjubic.dto.VideoPostDto;
 import com.isa.jutjubic.dto.VideoPostUploadDto;
+import com.isa.jutjubic.model.User;
 import com.isa.jutjubic.model.VideoPost;
+import com.isa.jutjubic.repository.UserRepository;
 import com.isa.jutjubic.repository.VideoPostRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +28,9 @@ public class VideoPostService {
 
     @Autowired
     private FileStorageService fileStorageService;
+
+    @Autowired
+    private UserRepository userRepository;
 
     public List<VideoPostDto> getAllPosts() {
         return postRepository.findAll()
@@ -77,6 +82,8 @@ public class VideoPostService {
             thumbnailPath = fileStorageService.saveFile(dto.getThumbnail(), "thumbnails");
             videoPath = fileStorageService.saveFile(dto.getVideo(), "videos");
 
+            User owner = userRepository.getById(1L);
+
             VideoPost post = new VideoPost();
             post.setTitle(dto.getTitle());
             post.setDescription(dto.getDescription());
@@ -85,7 +92,8 @@ public class VideoPostService {
             post.setVideoPath(videoPath);
             post.setCreatedAt(LocalDateTime.now());
             post.setLocation(dto.getLocation());
-            post.setUsername("mockUser"); // mock ulogovani korisnik
+            post.setOwner(owner);
+
 
             return postRepository.save(post);
 
