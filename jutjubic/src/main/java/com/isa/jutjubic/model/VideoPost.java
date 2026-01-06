@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.Date;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -11,6 +12,7 @@ import java.time.LocalDateTime;
 @Setter
 @ToString
 @Entity
+@Builder
 public class VideoPost {
 
     @Id
@@ -27,12 +29,15 @@ public class VideoPost {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     private String location;
+    //private String username;  U SLUCAJU DA NE BUDE RADILO SA SKRITPOM OSTAVLJAM ZBOG TESTIRANJA
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User owner;
 
-    private String username; // mockovani korisnik
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
 
-    //posle dodati i korisnika koji je postavio video
-  /*  @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.PERSIST)
-    @JoinColumn(name = "user_id")
-    private RegisteredUser postCreator; */
 
 }

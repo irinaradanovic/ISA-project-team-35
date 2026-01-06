@@ -2,37 +2,34 @@ package com.isa.jutjubic.config;
 
 import com.isa.jutjubic.model.Comment;
 import com.isa.jutjubic.model.User;
-import com.isa.jutjubic.model.Video;
+import com.isa.jutjubic.model.VideoPost;
 import com.isa.jutjubic.repository.CommentRepository;
 import com.isa.jutjubic.repository.UserRepository;
-import com.isa.jutjubic.repository.VideoRepository;
+import com.isa.jutjubic.repository.VideoPostRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Random;
 
 @Component
-@Profile("local")
+@Profile("local") // Pokreće se samo sa -Dspring.profiles.active=local || Run > Edit Configuration > Modify options > Add VM options
 @RequiredArgsConstructor
 public class DataLoader implements CommandLineRunner {
 
     private final UserRepository userRepository;
-    private final VideoRepository videoRepository;
+    private final VideoPostRepository videoPostRepository;
     private final CommentRepository commentRepository;
 
     @Override
     public void run(String... args) {
 
-        // USERS
         User user1 = User.builder()
                 .email("marko@test.com")
                 .username("marko")
-                .passwordHash("password")
+                .passwordHash("password") // kasnije samo ovde treba da stavimo hash funkciju
                 .firstName("Marko")
                 .lastName("Markovic")
                 .address("Novi Sad")
@@ -42,7 +39,7 @@ public class DataLoader implements CommandLineRunner {
         User user2 = User.builder()
                 .email("ana@test.com")
                 .username("ana")
-                .passwordHash("password")
+                .passwordHash("password") // hash funkcija kada se napravi
                 .firstName("Ana")
                 .lastName("Anic")
                 .address("Beograd")
@@ -52,32 +49,33 @@ public class DataLoader implements CommandLineRunner {
         userRepository.saveAll(List.of(user1, user2));
 
         List<User> owners = List.of(user1, user2);
-        int videoCount = 11; // prvi video + 10 novih
+        int videoCount = 10;
 
         for (int i = 1; i <= videoCount; i++) {
 
-            Video video = Video.builder()
-                    .title("Video broj " + i)
-                    .description("Ovo je test video broj " + i)
+            VideoPost videoPost = VideoPost.builder()
+                    .title("VideoPost broj " + i)
+                    .description("Ovo je test videoPost broj " + i)
                     .tags("tag" + i + ",test")
                     .thumbnailPath("/thumbnails/" + i + ".png")
                     .videoPath("/videos/" + i + ".mp4")
-                    .owner(owners.get(i % 2))
+                    .createdAt(LocalDateTime.now())
                     .location(i % 2 == 0 ? "Beograd" : "Novi Sad")
+                    .username(owners.get(i % 2).getUsername())
                     .build();
 
-            videoRepository.save(video);
+            videoPostRepository.save(videoPost);
 
-            for (int j = 1; j <= 5; j++) {
+            for (int j = 1; j <= 3; j++) {
                 Comment comment = Comment.builder()
-                        .content("Komentar " + j + " na video " + i)
+                        .content("Komentar " + j + " na VideoPost " + i)
                         .author(owners.get((i + j) % 2))
-                        .video(video)
+                        .video(null) // kasnije možeš mapirati na VideoPost ako dodaš relaciju
                         .build();
                 commentRepository.save(comment);
             }
         }
-        System.out.println("Local test data loaded ✔");
+
+        System.out.println("Local test data loaded");
     }
 }
-
