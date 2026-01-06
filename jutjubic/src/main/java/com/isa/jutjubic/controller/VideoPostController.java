@@ -5,8 +5,10 @@ import com.isa.jutjubic.dto.VideoPostUploadDto;
 import com.isa.jutjubic.model.VideoPost;
 import com.isa.jutjubic.service.FileStorageService;
 import com.isa.jutjubic.service.VideoPostService;
+import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +24,7 @@ import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/api/videoPosts")
+@CrossOrigin(origins = "http://localhost:5173") // front URL
 public class VideoPostController {
     @Autowired
     private VideoPostService postService;
@@ -35,11 +38,12 @@ public class VideoPostController {
         return ResponseEntity.ok(posts);
     }
 
-    @GetMapping("/{id}")
+   @GetMapping("/{id}")
     public ResponseEntity<VideoPostDto> getPostById(@PathVariable Integer id) {
         VideoPost post = postService.getById(id);
         return ResponseEntity.ok(postService.mapToDto(post));
     }
+
 
     private VideoPostDto mapToDto(VideoPost post) {
         VideoPostDto dto = new VideoPostDto();
