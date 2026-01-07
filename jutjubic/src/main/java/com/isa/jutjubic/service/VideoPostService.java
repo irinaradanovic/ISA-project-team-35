@@ -7,6 +7,9 @@ import com.isa.jutjubic.repository.VideoPostRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -139,5 +142,8 @@ public class VideoPostService {
     }
 
 
-
+    public Page<VideoPostDto> getLatestVideos(Pageable pageable) {
+        return postRepository.findAllByOrderByCreatedAtDesc(pageable)
+                .map(this::mapToDto);
+    }
 }
