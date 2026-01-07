@@ -7,7 +7,8 @@ import java.io.Serializable;
 import java.util.Date;
 
 @Entity
-@Table(name = "users")
+//@Table(name = "users")
+@Table(name = "\"users\"")
 @Getter
 @Setter
 @NoArgsConstructor

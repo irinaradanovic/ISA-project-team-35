@@ -22,12 +22,24 @@ import java.util.concurrent.ConcurrentHashMap;
 public class FileStorageService {
 
       private final Path rootUploadDir = Paths.get(System.getProperty("user.dir"), "uploads");
-    //private final Path rootUploadDir = Paths.get("uploads"); // relativno od root-a projekta
 
     @Autowired
     private CacheManager cacheManager;
 
     public String saveFile(MultipartFile file, String subFolder) throws IOException {
+        //  simulacija sporog uploada
+    /*   long start = System.currentTimeMillis();
+        try {
+            System.out.println("Simulating slow upload...");
+            Thread.sleep(16000); // 16 sekundi
+        } catch (InterruptedException ignored) {}
+
+        long duration = System.currentTimeMillis() - start;
+
+       if (duration > 15000) {
+            throw new IOException("Upload took too long");
+        } */
+
         Path folderPath = rootUploadDir.resolve(subFolder);
 
         // kreiraj folder ako ne postoji
@@ -39,7 +51,7 @@ public class FileStorageService {
         file.transferTo(filePath.toFile());
 
         //return filePath.toString();
-        //vrati relativni path za čuvanje u bazi
+        //vrati relativni path za cuvanje u bazi
         return rootUploadDir.getFileName().resolve(subFolder).resolve(file.getOriginalFilename()).toString();
     }
 

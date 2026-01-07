@@ -1,0 +1,102 @@
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+h2 {
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+
+.hint {
+    color: #777;
+    font-size: 13px;
+    margin: 2px 0 6px;
+}
+
+.form-group {
+    margin-bottom: 18px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+input[type="text"],
+textarea,
+input[type="file"],
+select {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    background-color: #fff;
+    outline: none;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    border-color: #2d8cf0;
+}
+
+button,
+.submit-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    background-color: #ff3d00;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background .2s ease;
+}
+
+button:hover,
+.submit-btn:hover {
+    background: #e63900;
+}
+
+
+
+button:disabled {
+    background: #b9b9b9;
+}
+
+button:disabled:hover {
+    background: #b9b9b9;
+}
+
+.message {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.success {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.error {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.tag {
+    padding: 6px 12px;
+    border-radius: 16px;
+    background: #ddd;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.tag.selected {
+    background: #ff3d00;
+    color: white;
+}
+

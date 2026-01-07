@@ -9,5 +9,6 @@ import java.util.List;
 
 public interface CommentRepository extends JpaRepository<Comment, Long> {
     List<Comment> findByVideoPostOrderByCreatedAtDesc(VideoPost videoPost, Pageable pageable);
+    List<Comment> findByVideoPost(VideoPost videoPost);
 
 }
