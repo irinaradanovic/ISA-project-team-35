@@ -123,7 +123,7 @@ public class DataLoader implements CommandLineRunner {
         userRepository.saveAll(List.of(user1, user2));
 
         List<User> owners = List.of(user1, user2);
-        int videoCount = 6;
+        int videoCount = 100;
 
         for (int i = 1; i <= videoCount; i++) {
 

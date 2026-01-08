@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
 @ToString
 
 public class VideoPostDto {
-    //za prikazivanje
     private Integer id;
     private String title;
     private String description;

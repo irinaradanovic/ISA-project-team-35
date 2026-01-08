@@ -3,6 +3,7 @@ package com.isa.jutjubic.controller;
 import com.isa.jutjubic.dto.VideoPostDto;
 import com.isa.jutjubic.dto.VideoPostUploadDto;
 import com.isa.jutjubic.model.VideoPost;
+import com.isa.jutjubic.repository.VideoPostRepository;
 import com.isa.jutjubic.service.FileStorageService;
 import com.isa.jutjubic.service.VideoPostService;
 import jakarta.annotation.Resource;
@@ -10,6 +11,9 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.core.io.UrlResource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -32,13 +36,9 @@ public class VideoPostController {
 
     @Autowired
     private FileStorageService fileStorageService;
+    @Autowired
+    private VideoPostRepository videoPostRepository;
 
-    @GetMapping
-    @Transactional
-    public ResponseEntity<List<VideoPostDto>> getAllVideoPosts() {
-        List<VideoPostDto> posts = postService.getAllPosts();
-        return ResponseEntity.ok(posts);
-    }
 
    @GetMapping("/{id}")
    @Transactional
@@ -121,6 +121,14 @@ public class VideoPostController {
         }
     }
 
+    @GetMapping
+    public Page<VideoPostDto> getAllVideos(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        return postService.getLatestVideos(pageable);
+    }
 
 
 }
