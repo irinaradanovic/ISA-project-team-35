@@ -16,10 +16,10 @@
             <img class="channel-icon" src="@/assets/logo.png" alt="Channel Icon">
             <div class="video-info">
               <router-link :to="`/video/${video.id}`" class="video-title">{{ video.title }}</router-link>
-              <a href="#" class="channel-name">Channel Name</a>
+              <a href="#" class="channel-name">{{ video.ownerUsername }}</a>
               <div class="video-stats">
                 <span>{{ formatDate(video.createdAt) }}</span>
-                <span v-if="video.location"> • {{ video.location }}</span>
+                <span v-if="video.location"> • {{ video.viewCount }}</span>
               </div>
             </div>
           </div>
