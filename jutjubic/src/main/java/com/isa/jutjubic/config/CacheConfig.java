@@ -1,33 +1,13 @@
 package com.isa.jutjubic.config;
 
-import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.cache.concurrent.ConcurrentMapCache;
-import org.springframework.cache.support.SimpleCacheManager;
-import org.springframework.context.annotation.Bean;
+import org.springframework.boot.autoconfigure.cache.JCacheManagerCustomizer;
 import org.springframework.context.annotation.Configuration;
-
-
-import java.util.Arrays;
-import java.util.List;
-
-import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.cache.concurrent.ConcurrentMapCache;
-import org.springframework.cache.support.SimpleCacheManager;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
+import javax.cache.CacheManager;
 
 @Configuration
-@EnableCaching
-public class CacheConfig{
+public class CacheConfig implements JCacheManagerCustomizer {
+    @Override
+    public void customize(CacheManager cacheManager) {
 
-    @Bean
-    public CacheManager cacheManager() {
-        SimpleCacheManager cacheManager = new SimpleCacheManager();
-        ConcurrentMapCache thumbnailCache = new ConcurrentMapCache("thumbnails");
-        cacheManager.setCaches(List.of(thumbnailCache));
-        return cacheManager;
     }
-
 }

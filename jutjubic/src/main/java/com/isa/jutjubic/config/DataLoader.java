@@ -136,6 +136,9 @@ public class DataLoader implements CommandLineRunner {
                     .createdAt(LocalDateTime.now())
                     .location(randomLocation())
                     .owner(owners.get(i % 2))
+                    .likeCount(0)
+                    .commentCount(3)  //za pocetak 3 komentara
+                    .viewCount(0)
                     .build();
 
             videoPostRepository.save(videoPost);

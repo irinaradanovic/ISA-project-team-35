@@ -3,17 +3,47 @@
     <h2>Create new video post</h2>
     <form @submit.prevent="submitPost" enctype="multipart/form-data">
       <div class="form-group">
-        <label>Title:</label>
-        <input type="text" v-model="title" required />
+        <label>Title</label>
+        <small class="hint">
+          Required, max 100 characters, short but descriptive
+        </small>
+
+        <input
+            type="text"
+            v-model="title"
+            maxlength="100"
+            required
+        />
+
+        <div class="char-counter">
+          {{ title.length }}/100
+        </div>
       </div>
 
+
       <div class="form-group">
-        <label>Description:</label>
-        <textarea v-model="description" required></textarea>
+        <label>Description</label>
+        <small class="hint">
+          Required, max 500 characters, briefly explain what the video is about
+        </small>
+
+        <textarea
+            v-model="description"
+            maxlength="500"
+            required
+        ></textarea>
+
+        <div class="char-counter">
+          {{ description.length }}/500
+        </div>
       </div>
+
 
       <div class="form-group">
         <label>Tags:</label>
+        <small class="hint">
+          Required, Choose one or more tag to describe your video
+        </small>
 
         <div class="tag-list">
     <span
@@ -31,20 +61,26 @@
 
       <div class="form-group">
         <label>Thumbnail:</label>
+        <small class="hint">
+          Required, choose a photo that catches viewers attention
+        </small>
 
         <input type="file" ref="thumbnailInput" @change="onThumbnailSelected" accept="image/*" />
 
         <div v-if="thumbnailPreview" class="preview-container">
           <img :src="thumbnailPreview" class="thumbnail-preview" />
           <button type="button" class="remove-btn" @click="removeThumbnail">
-            Ukloni
+            Remove
           </button>
         </div>
       </div>
 
 
       <div class="form-group">
-        <label>Video (mp4, max 200MB):</label>
+        <label>Video:</label>
+        <small class="hint">
+          Required, only .mp4 files, max 200MB
+        </small>
 
         <input type="file"ref="videoInput" @change="onVideoSelected" accept="video/mp4" />
 
@@ -57,7 +93,7 @@
           ></video>
 
           <button type="button" class="remove-btn" @click="removeVideo">
-            Ukloni video
+            Remove video
           </button>
         </div>
       </div>
@@ -83,8 +119,16 @@
         </ul>
       </div>
 
+      <!-- ogranicava korisnika da mora da unese ova polja-->
+      <button
+          type="submit"
+          class="submit-btn"
+          :disabled="isDisabled"
+          :title="isDisabled ? disabledReason : ''"
+      >
+        Post
+      </button>
 
-      <button type="submit" class="submit-btn">Post</button>
     </form>
 
     <div v-if="message" :class="{ success: success, error: !success }" class="message">
@@ -143,6 +187,14 @@ export default {
 
     };
   },
+  computed:{
+    disabledReason(){
+      return "Please fill out all required fields"
+    },
+    isDisabled() {
+      return !this.title || !this.description || !this.video || !this.thumbnail || this.selectedTags.length === 0;
+    },
+  },
   methods: {
     onThumbnailSelected(event) {
       const file = event.target.files[0];
@@ -166,9 +218,33 @@ export default {
       const file = event.target.files[0];
       if (!file) return;
 
+      // validate size
+      if (file.size > 200 * 1024 * 1024) {
+        this.message = "Video is too large. Maximum allowed size is 200MB.";
+        this.success = false;
+        this.$refs.videoInput.value = "";
+        this.video = null;
+        this.videoPreview = null;
+        return;
+      }
+
+      // validate type
+      if (file.type !== "video/mp4") {
+        this.message = "Only MP4 videos are allowed.";
+        this.success = false;
+        this.$refs.videoInput.value = "";
+        this.video = null;
+        this.videoPreview = null;
+        return;
+      }
+
+      this.message = "";
+      this.success = true;
+
       this.video = file;
       this.videoPreview = URL.createObjectURL(file);
     },
+
 
     removeVideo() {
       this.video = null;
@@ -200,11 +276,43 @@ export default {
     },
 
     async submitPost() {
-      if (!this.thumbnail || !this.video) {
-        this.message = "Molimo izaberite video i thumbnail!";
+
+      if (!this.title.trim()) {
+        this.message = "Title is required.";
         this.success = false;
         return;
       }
+
+      if (!this.description.trim()) {
+        this.message = "Description is required.";
+        this.success = false;
+        return;
+      }
+
+      if (this.selectedTags.length === 0) {
+        this.message = "Please select at least one tag.";
+        this.success = false;
+        return;
+      }
+
+      if (!this.thumbnail || !this.video) {
+        this.message = "Please upload both thumbnail and video.";
+        this.success = false;
+        return;
+      }
+
+      if (this.title.length > 100) {
+        this.message = "Title cannot exceed 100 characters.";
+        this.success = false;
+        return;
+      }
+
+      if (this.description.length > 500) {
+        this.message = "Description cannot exceed 500 characters.";
+        this.success = false;
+        return;
+      }
+
 
       const formData = new FormData();
       formData.append('title', this.title);
@@ -214,39 +322,52 @@ export default {
       formData.append('thumbnail', this.thumbnail);
       formData.append('video', this.video);
 
+      const confirmed = confirm("Are you sure you want to upload this video?");
+      if (!confirmed) return;
+
       try {
         const res = await axios.post('http://localhost:8080/api/videoPosts', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
 
-        this.message = "Video postavljen uspešno!";
-        this.success = true;
-
-        // Nakon uspešnog postovanja, ide na stranicu za prikaz videa
+        alert("Video posted successfully!");
         const videoId = res.data.id;
         this.router.push(`/video/${videoId}`);
+
       } catch (err) {
-        console.error(err);
-        this.message = "Greška pri upload-u: " + (err.response?.data || err.message);
-        this.success = false;
+        alert("Upload failed. Rolling back...");
+        this.resetForm();
       }
+    },
+
+    resetForm() {
+      this.title = "";
+      this.description = "";
+      this.selectedTags = [];
+      this.thumbnail = null;
+      this.video = null;
+      this.thumbnailPreview = null;
+      this.videoPreview = null;
+      this.locationInput = "";
+      this.filteredLocations = [];
+
+      if (this.$refs.videoInput) this.$refs.videoInput.value = "";
+      if (this.$refs.thumbnailInput) this.$refs.thumbnailInput.value = "";
     }
+
   }
 };
 </script>
 
 <style scoped>
-* {
-  font-family: 'Inter', sans-serif;
-}
 
 .video-form-container {
-  max-width: 600px;
-  margin: 30px auto;
-  padding: 20px;
-  background: #f7f7f7;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 32px;
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.08);
 }
 
 .video-preview {
@@ -256,20 +377,20 @@ export default {
   margin-top: 10px;
   border: 1px solid #ddd;
 }
-.tag:hover {
-  background: #ccc;
-}
-input:focus,
-textarea:focus {
-  outline: none;
-  border-color: #ff3d00;
-  box-shadow: 0 0 0 2px rgba(255,61,0,0.15);
-}
+
 .preview-container {
   margin-top: 10px;
   position: relative;
   display: inline-block;
 }
+
+
+.char-counter {
+  text-align: right;
+  font-size: 12px;
+  color: #666;
+}
+
 
 .thumbnail-preview {
   width: 200px;
@@ -279,9 +400,9 @@ textarea:focus {
 }
 
 .remove-btn {
-  margin-top: 6px;
-  padding: 6px 12px;
-  background: #eee;
+
+  padding: 5px 10px;
+  background: #d4cbcb;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -289,14 +410,9 @@ textarea:focus {
 }
 
 .remove-btn:hover {
-  background: #ddd;
+  background: #bfb4b4;
 }
 
-
-h2 {
-  text-align: center;
-  margin-bottom: 20px;
-}
 
 .form-group {
   display: flex;
@@ -304,42 +420,6 @@ h2 {
   margin-bottom: 15px;
 }
 
-input[type="text"],
-textarea,
-input[type="file"] {
-  padding: 8px;
-  font-size: 14px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-}
-
-textarea {
-  resize: vertical;
-  min-height: 80px;
-}
-
-.submit-btn {
-  width: 100%;
-  padding: 10px;
-  background-color: #ff3d00;
-  color: white;
-  font-size: 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.submit-btn:hover {
-  background-color: #e63900;
-}
-
-.message {
-  margin-top: 15px;
-  text-align: center;
-}
-
-.success { color: green; }
-.error { color: red; }
 
 .tag-list {
   display: flex;
@@ -356,19 +436,6 @@ textarea {
   box-shadow: 0 10px 25px rgba(0,0,0,0.08);
 }
 
-
-.tag {
-  padding: 6px 12px;
-  border-radius: 16px;
-  background: #ddd;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.tag.selected {
-  background: #ff3d00;
-  color: white;
-}
 
 .location-list {
   list-style: none;

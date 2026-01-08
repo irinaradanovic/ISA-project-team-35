@@ -4,17 +4,16 @@ import org.ehcache.event.CacheEvent;
 import org.ehcache.event.CacheEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 
-// ne radi iz nekog razloga
-@Component
+
 public class ThumbnailCacheLogger implements CacheEventListener<Object, Object> {
 
     private static final Logger logger = LoggerFactory.getLogger(ThumbnailCacheLogger.class);
+
     @Override
     public void onEvent(CacheEvent<?, ?> cacheEvent) {
-        logger.info("Key: {} | EventType: {} | Old value: {} | New value: {}",
-                cacheEvent.getKey(), cacheEvent.getType(), cacheEvent.getOldValue(), cacheEvent.getNewValue());
+        logger.info("CACHE EVENT: Key: {} | EventType: {}",
+                cacheEvent.getKey(), cacheEvent.getType());
     }
 
     /*@Override
