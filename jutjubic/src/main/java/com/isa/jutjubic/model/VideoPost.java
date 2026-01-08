@@ -29,10 +29,17 @@ public class VideoPost {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     private String location;
-    private String username;
+    //private String username;  //U SLUCAJU DA NE BUDE RADILO SA SKRITPOM OSTAVLJAM ZBOG TESTIRANJA
+
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User owner;
+
+
+    private int likeCount = 0;
+    private int commentCount = 0;
+    private int viewCount = 0;
 
     @PrePersist
     protected void onCreate() {

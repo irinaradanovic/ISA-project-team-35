@@ -18,5 +18,9 @@ public class VideoPostDto {
     private String thumbnailPath;
     private LocalDateTime createdAt;
     private String location;
+    private String ownerUsername;
+    private int likeCount;
+    private int commentCount;
+    private int viewCount;
 }
 

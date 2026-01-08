@@ -1,21 +1,18 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<config
-        xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
-        xmlns='http://www.ehcache.org/v3'
-        xsi:schemaLocation="http://www.ehcache.org/v3
-        http://www.ehcache.org/schema/ehcache-core-3.0.xsd">
-
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.ehcache.org/v3"
+        xmlns:jsr107="http://www.ehcache.org/v3/jsr107"
+        xsi:schemaLocation="
+            http://www.ehcache.org/v3 http://www.ehcache.org/schema/ehcache-core-3.0.xsd
+            http://www.ehcache.org/v3/jsr107 http://www.ehcache.org/schema/ehcache-107-ext-3.0.xsd">
     <!-- Persistent cache directory -->
-    <persistence directory="cache/thumbnails" />
-
-    <!-- Default cache template -->
-    <cache-template name="defaultThumbnailTemplate">
-        <!-- TTL - time to live: 30 minuta -->
+    <persistence directory="cache-example/cache" />
+    <cache alias="thumbnails">
+        <key-type>java.lang.String</key-type>
+        <value-type>[B</value-type>
         <expiry>
-            <ttl unit="seconds">10</ttl>
+            <ttl unit="seconds">15</ttl>
         </expiry>
 
-        <!-- Listener za logging -->
         <listeners>
             <listener>
                 <class>com.isa.jutjubic.logger.ThumbnailCacheLogger</class>
@@ -29,22 +26,12 @@
         </listeners>
 
         <resources>
-            <!-- 100 objekata u memoriji -->
-            <heap unit="entries">100</heap>
-            <!-- 10 MB offheap -->
+            <!-- 1000 objekata na Java heapu -->
+            <heap>2</heap>
+            <!-- 10MB u RAMu se čuva -->
             <offheap unit="MB">10</offheap>
-            <!-- 50 MB na disku -->
-            <disk persistent="true" unit="MB">50</disk>
-        </resources>
-    </cache-template>
-
-    <!-- Cache konkretno za thumbnails -->
-    <cache alias="thumbnails" uses-template="defaultThumbnailTemplate">
-        <key-type>java.lang.String</key-type>
-        <value-type>byte[]</value-type>
-        <resources>
-            <heap unit="entries">100</heap>
+            <!-- 20MB na disku se čuva -->
+            <disk persistent="true" unit="MB">20</disk>
         </resources>
     </cache>
-
 </config>

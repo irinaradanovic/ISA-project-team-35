@@ -7,6 +7,7 @@ import com.isa.jutjubic.repository.VideoPostRepository;
 import com.isa.jutjubic.service.FileStorageService;
 import com.isa.jutjubic.service.VideoPostService;
 import jakarta.annotation.Resource;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.core.io.UrlResource;
@@ -40,9 +41,10 @@ public class VideoPostController {
 
 
    @GetMapping("/{id}")
+   @Transactional
     public ResponseEntity<VideoPostDto> getPostById(@PathVariable Integer id) {
-        VideoPost post = postService.getById(id);
-        return ResponseEntity.ok(postService.mapToDto(post));
+        VideoPostDto post = postService.getById(id);
+        return ResponseEntity.ok(post);
     }
 
 
@@ -90,6 +92,7 @@ public class VideoPostController {
     }
 
     @GetMapping("/{id}/thumbnail")
+    @Transactional
     public ResponseEntity<byte[]> getThumbnail(@PathVariable Integer id) {
         byte[] image = postService.getThumbnail(id);
 

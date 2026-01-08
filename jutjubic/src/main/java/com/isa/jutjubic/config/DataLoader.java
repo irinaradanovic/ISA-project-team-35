@@ -12,7 +12,12 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
+
 
 @Component
 @Profile("local") // Pokreće se samo sa -Dspring.profiles.active=local || Run > Edit Configuration > Modify options > Add VM options
@@ -22,6 +27,75 @@ public class DataLoader implements CommandLineRunner {
     private final UserRepository userRepository;
     private final VideoPostRepository videoPostRepository;
     private final CommentRepository commentRepository;
+
+   /* private static final List<String> AVAILABLE_TAGS = List.of(
+            "Music",
+            "Vlog",
+            "Travel",
+            "Food",
+            "Education",
+            "Gaming",
+            "Comedy",
+            "Fitness"
+    );
+
+    private static final List<String> LOCATIONS = List.of(
+            "Beograd",
+            "Novi Sad",
+            "Niš",
+            "Kragujevac",
+            "Subotica",
+            "Zagreb",
+            "Sarajevo",
+            "Split",
+            "Ljubljana"
+    );
+
+    private String randomLocation() {
+        return LOCATIONS.get((int) (Math.random() * LOCATIONS.size()));
+    }
+
+    private String randomTags() {
+        Collections.shuffle(AVAILABLE_TAGS);
+        return AVAILABLE_TAGS.stream()
+                .limit(1 + (int) (Math.random() * 3)) // 1–3 taga
+                .collect(Collectors.joining(","));
+    } */
+
+    private String randomTags() {
+        List<String> tags = new ArrayList<>(List.of(
+                "Music",
+                "Vlog",
+                "Travel",
+                "Food",
+                "Education",
+                "Gaming",
+                "Comedy",
+                "Fitness"
+        ));
+
+        Collections.shuffle(tags);
+
+        return String.join(",", tags.subList(0, 2));
+    }
+
+    private String randomLocation() {
+        List<String> locations = List.of(
+                "Beograd",
+                "Novi Sad",
+                "Niš",
+                "Kragujevac",
+                "Subotica",
+                "Zagreb",
+                "Sarajevo",
+                "Split",
+                "Ljubljana"
+        );
+
+        return locations.get(new Random().nextInt(locations.size()));
+    }
+
+
 
     @Override
     public void run(String... args) {
@@ -56,12 +130,15 @@ public class DataLoader implements CommandLineRunner {
             VideoPost videoPost = VideoPost.builder()
                     .title("VideoPost broj " + i)
                     .description("Ovo je test videoPost broj " + i)
-                    .tags("tag" + i + ",test")
-                    .thumbnailPath("/thumbnails/" + i + ".png")
-                    .videoPath("/videos/" + i + ".mp4")
+                    .tags(randomTags())
+                    .thumbnailPath("uploads/thumbnails/" + i + ".jpg")
+                    .videoPath("uploads/videos/" + i + ".mp4")
                     .createdAt(LocalDateTime.now())
-                    .location(i % 2 == 0 ? "Beograd" : "Novi Sad")
+                    .location(randomLocation())
                     .owner(owners.get(i % 2))
+                    .likeCount(0)
+                    .commentCount(3)  //za pocetak 3 komentara
+                    .viewCount(0)
                     .build();
 
             videoPostRepository.save(videoPost);

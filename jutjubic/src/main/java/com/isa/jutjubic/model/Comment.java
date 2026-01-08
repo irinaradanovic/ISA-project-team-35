@@ -1,5 +1,6 @@
 package com.isa.jutjubic.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -7,7 +8,7 @@ import java.io.Serializable;
 import java.util.Date;
 
 @Entity
-@Table(name = "comments",
+@Table(name = "\"comments\"",
         indexes = {
                 @Index(name = "idx_comment_video_created", columnList = "video_id, createdAt"),
                 @Index(name = "idx_comment_user_created", columnList = "user_id, createdAt")
@@ -32,6 +33,7 @@ public class Comment implements Serializable {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "video_id", nullable = false)
+    @JsonIgnore
     private VideoPost videoPost;
 
     @Temporal(TemporalType.TIMESTAMP)
