@@ -29,7 +29,7 @@ public class VideoPost {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     private String location;
-    private String username;  //U SLUCAJU DA NE BUDE RADILO SA SKRITPOM OSTAVLJAM ZBOG TESTIRANJA
+    private String username;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User owner;

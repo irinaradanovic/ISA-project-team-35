@@ -1,8 +1,9 @@
 <template>
   <div class="home">
     <div class="videos">
-      <section class="video-section">
-        <article v-for="video in videos" :key="video.id" class="video-container">
+      <section v-for="(section, sectionIndex) in videoSections" :key="sectionIndex" class="video-section">
+        <h3 v-if="sectionIndex > 0" class="section-header">More Videos</h3>
+        <article v-for="video in section" :key="video.id" class="video-container">
           <router-link :to="`/video/${video.id}`" class="thumbnail">
             <img 
               class="thumbnail-image" 
@@ -25,7 +26,7 @@
         </article>
       </section>
 
-      <div v-if="loading" class="loading">Loading more videos...</div>
+      <div v-if="loading" class="loading">Loading more videos</div>
       <div v-else-if="!hasMore" class="no-more">No more videos</div>
     </div>
   </div>
@@ -78,9 +79,17 @@ body{
     gap: 2rem 1rem;
     padding: 2rem 0rem;
     margin : 0 1rem;
+    border-top: 1px solid #e0e0e0;
 }
 .video-section:first-child {
     border-top: none;
+}
+.section-header {
+    grid-column: 1 / -1;
+    margin: 0 0 1rem 0;
+    color: #030303;
+    font-size: 1.2rem;
+    font-weight: 600;
 }
 .video-bottom-section {
     display: flex;
@@ -130,17 +139,44 @@ export default {
             totalPages: 0,
             totalElements: 0,
             loading: false,
-            hasMore: true
+            hasMore: true,
+            columnsPerRow: 4,
+            rowsPerSection: 2
         };
+    },
+    computed: {
+        videosPerSection() {
+            return this.columnsPerRow * this.rowsPerSection;
+        },
+        videoSections() {
+            const sections = [];
+            for (let i = 0; i < this.videos.length; i += this.videosPerSection) {
+                sections.push(this.videos.slice(i, i + this.videosPerSection));
+            }
+            return sections;
+        }
     },
     mounted() {
         this.loadPage(0);
         window.addEventListener('scroll', this.handleScroll);
+        window.addEventListener('resize', this.calculateColumns);
+        this.calculateColumns();
     },
     beforeUnmount() {
         window.removeEventListener('scroll', this.handleScroll);
+        window.removeEventListener('resize', this.calculateColumns);
     },
     methods: {
+        calculateColumns() {
+            
+            const containerWidth = window.innerWidth - 32;
+            const minVideoWidth = 250;
+            const gap = 16;
+            
+            const columns = Math.max(1, Math.floor((containerWidth + gap) / (minVideoWidth + gap)));
+            
+            this.columnsPerRow = columns;
+        },
         handleScroll() {
             const scrollTop = window.scrollY || document.documentElement.scrollTop;
             const windowHeight = window.innerHeight;
@@ -154,7 +190,6 @@ export default {
             const isScrollable = document.documentElement.scrollHeight > window.innerHeight;
             
             if (!isScrollable && this.hasMore && !this.loading) {
-                console.log('Page not scrollable, loading more content');
                 this.loadMoreVideos();
             }
         },
