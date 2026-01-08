@@ -5,15 +5,15 @@
         <h3 v-if="sectionIndex > 0" class="section-header">More Videos</h3>
         <article v-for="video in section" :key="video.id" class="video-container">
           <router-link :to="`/video/${video.id}`" class="thumbnail">
-            <img 
-              class="thumbnail-image" 
-              :src="`http://localhost:8080/api/videoPosts/${video.id}/thumbnail`"  
-              :alt="video.title"
-            >
+            <img
+            class="thumbnail-image"
+            :src="thumbnailUrl(video)"
+            :alt="video.title"
+            />
           </router-link>
 
           <div class="video-bottom-section">
-            <img class="channel-icon" src="https://www.citypng.com/public/uploads/preview/red-youtube-logo-symbol-701751694792489qxkccchok1.png" alt="Channel Icon">
+            <img class="channel-icon" src="@/assets/logo.png" alt="Channel Icon">
             <div class="video-info">
               <router-link :to="`/video/${video.id}`" class="video-title">{{ video.title }}</router-link>
               <a href="#" class="channel-name">Channel Name</a>
@@ -245,6 +245,12 @@ export default {
             if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
             if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
             return `${Math.floor(diffDays / 365)} years ago`;
+        },
+         thumbnailUrl(video) {
+            if (video.thumbnailPath) {
+            return `http://localhost:8080/${video.thumbnailPath}`;
+            }
+            return `http://localhost:8080/api/videoPosts/${video.id}/thumbnail`;
         }
     }
 };

@@ -142,7 +142,7 @@ public class VideoPostService {
         return fileStorageService.loadThumbnail(path);
     }
 
-
+    @Transactional(readOnly = true)
     public Page<VideoPostDto> getLatestVideos(Pageable pageable) {
         return postRepository.findAllByOrderByCreatedAtDesc(pageable)
                 .map(this::mapToDto);

@@ -131,7 +131,7 @@ public class DataLoader implements CommandLineRunner {
                     .title("VideoPost broj " + i)
                     .description("Ovo je test videoPost broj " + i)
                     .tags(randomTags())
-                    .thumbnailPath("uploads/thumbnails/" + i + ".jpg")
+                    .thumbnailPath("uploads/thumbnails/" + (i%6+1) + ".jpg")
                     .videoPath("uploads/videos/" + i + ".mp4")
                     .createdAt(LocalDateTime.now())
                     .location(randomLocation())
