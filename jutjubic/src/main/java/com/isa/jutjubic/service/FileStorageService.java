@@ -55,14 +55,14 @@ public class FileStorageService {
         return rootUploadDir.getFileName().resolve(subFolder).resolve(file.getOriginalFilename()).toString();
     }
 
+
     @Cacheable(value = "thumbnails", key = "#path")
     public byte[] loadThumbnail(String path) {
         try {
-            System.out.println("Reading thumbnail from disk: " + path); // vidi da li se kešira
-            //return Files.readAllBytes(Paths.get(path));
+            System.out.println("--- IZVRŠAVAM ČITANJE SA DISKA ZA: " + path);
             return Files.readAllBytes(Paths.get(System.getProperty("user.dir")).resolve(path));
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Neuspešno čitanje fajla: " + path, e);
         }
     }
 

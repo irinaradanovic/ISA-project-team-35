@@ -34,12 +34,10 @@ public class CommentService {
                 new RuntimeException("User not found"));
     }
 
-    @Transactional
-    public List<CommentDto> getCommentsByVideoId(Integer videoId) {
-        VideoPost video = videoPostRepository.findById(videoId)
-                .orElseThrow(() -> new RuntimeException("Video not found"));
 
-        return commentRepository.findByVideoPost(video)
+
+    public List<CommentDto> getCommentsByVideoId(Integer videoId) {
+        return commentRepository.findAllByVideoId(videoId)
                 .stream()
                 .sorted((a,b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                 .map(this::mapToDTO)

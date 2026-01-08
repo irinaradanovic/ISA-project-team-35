@@ -129,19 +129,14 @@ public class VideoPostService {
         return mapToDto(post);
     }
 
-    @Cacheable(value = "thumbnails", key = "#videoId")
+    //@Cacheable(value = "thumbnails", key = "#videoId")
     public byte[] getThumbnail(Integer videoId) {
-        VideoPostDto post = getById(videoId);
+        // 1. Uzimamo samo putanju (brz upit)
+        String path = postRepository.findThumbnailPathById(videoId)
+                .orElseThrow(() -> new NoSuchElementException("Thumbnail path not found for id " + videoId));
 
-        System.out.println("Ucitavam thumbnail sa diska");
-
-        try {
-            Thread.sleep(2000); // simulacija skupog poziva
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-
-        return fileStorageService.loadThumbnail(post.getThumbnailPath());
+        // 2. Pozivamo FileStorage koji ima @Cacheable
+        return fileStorageService.loadThumbnail(path);
     }
 
 
