@@ -235,7 +235,7 @@ export default {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Use global h2 styles, just adjust margin */
+
 h2 {
   margin: 0 0 8px 0;
 }

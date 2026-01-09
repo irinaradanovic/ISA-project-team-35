@@ -41,18 +41,15 @@ public class VideoPostController {
 
 
    @GetMapping("/{id}")
-   //@Transactional
-    public ResponseEntity<VideoPostDto> getPostById(@PathVariable Integer id) {
-        VideoPostDto post = postService.getById(id);
-        postService.incrementViews(id);
-        return ResponseEntity.ok(post);
+    public ResponseEntity<?> getPostById(@PathVariable Integer id) {
+       try {
+           VideoPostDto post = postService.getById(id);
+           postService.incrementViews(id);
+           return ResponseEntity.ok(post);
+       } catch (NoSuchElementException e) {
+           return ResponseEntity.status(404).body("Video post not found. Either deleted or unavailable");
+       }
     }
-
-   /* @PostMapping("/{id}/view")
-    public ResponseEntity<Void> incrementView(@PathVariable Integer id) {
-        postService.incrementView(id);
-        return ResponseEntity.ok().build();
-    } */
 
 
     private VideoPostDto mapToDto(VideoPost post) {
@@ -108,12 +105,6 @@ public class VideoPostController {
                 .body(image);
     }
 
-
-   /* @DeleteMapping("/thumbnail")
-    @CacheEvict(value = "thumbnails", key = "#path")
-    public void deleteThumbnail(@RequestParam String path) throws IOException {
-        fileStorageService.deleteFile(path);
-    }*/
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deletePost(@PathVariable Integer id) {

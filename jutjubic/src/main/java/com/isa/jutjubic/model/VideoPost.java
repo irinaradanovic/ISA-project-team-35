@@ -6,6 +6,7 @@ import lombok.*;
 import org.hibernate.annotations.Cache;
 import java.time.LocalDateTime;
 import java.util.Date;
+import org.hibernate.annotations.Where;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -16,6 +17,7 @@ import java.util.Date;
 @Builder
 @Cacheable
 @Cache(usage = org.hibernate.annotations.CacheConcurrencyStrategy.READ_WRITE)
+@Where(clause = "deleted = false") //Hibernate ignorise sve sto je obrisano
 public class VideoPost {
 
     @Id
@@ -32,8 +34,6 @@ public class VideoPost {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     private String location;
-    //private String username;  //U SLUCAJU DA NE BUDE RADILO SA SKRITPOM OSTAVLJAM ZBOG TESTIRANJA
-
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -45,6 +45,9 @@ public class VideoPost {
     private int commentCount = 0;
     @Column(nullable = false)
     private int viewCount = 0;
+
+    @Column(nullable = false)
+    private boolean deleted = false;
 
     @PrePersist
     protected void onCreate() {
