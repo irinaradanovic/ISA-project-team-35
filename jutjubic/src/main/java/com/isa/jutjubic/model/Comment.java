@@ -3,6 +3,9 @@ package com.isa.jutjubic.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Cache;
+import jakarta.persistence.Cacheable;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -15,6 +18,8 @@ import java.util.Date;
         })
 @Getter
 @Setter
+@Cacheable
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -29,11 +34,13 @@ public class Comment implements Serializable {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
     private User author;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "video_id", nullable = false)
     @JsonIgnore
+    @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
     private VideoPost videoPost;
 
     @Temporal(TemporalType.TIMESTAMP)

@@ -2,7 +2,9 @@ package com.isa.jutjubic.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 
+import org.hibernate.annotations.Cache;
 import java.io.Serializable;
 import java.util.Date;
 
@@ -14,6 +16,8 @@ import java.util.Date;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Cacheable
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 public class User implements Serializable {
 
     @Id

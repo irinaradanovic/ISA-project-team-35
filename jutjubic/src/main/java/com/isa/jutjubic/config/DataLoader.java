@@ -147,7 +147,7 @@ public class DataLoader implements CommandLineRunner {
 
             videoPostRepository.save(videoPost);
 
-            for (int j = 1; j <= 3; j++) {
+            for (int j = 1; j <= 15; j++) {
                 Comment comment = Comment.builder()
                         .content("Komentar " + j + " na VideoPost " + i)
                         .author(owners.get((i + j) % 2))
