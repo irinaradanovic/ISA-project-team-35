@@ -36,9 +36,11 @@ public class VideoPost {
     @JoinColumn(name = "user_id", nullable = false)
     private User owner;
 
-
+    @Column(nullable = false)
     private int likeCount = 0;
+    @Column(nullable = false)
     private int commentCount = 0;
+    @Column(nullable = false)
     private int viewCount = 0;
 
     @PrePersist

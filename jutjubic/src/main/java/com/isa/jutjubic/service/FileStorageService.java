@@ -28,15 +28,15 @@ public class FileStorageService {
 
     public String saveFile(MultipartFile file, String subFolder) throws IOException {
         //  simulacija sporog uploada
-    /*   long start = System.currentTimeMillis();
+      /* long start = System.currentTimeMillis();
         try {
             System.out.println("Simulating slow upload...");
-            Thread.sleep(16000); // 16 sekundi
+            Thread.sleep(7000); // 7 sekundi
         } catch (InterruptedException ignored) {}
 
         long duration = System.currentTimeMillis() - start;
 
-       if (duration > 15000) {
+       if (duration > 6000) {
             throw new IOException("Upload took too long");
         } */
 
