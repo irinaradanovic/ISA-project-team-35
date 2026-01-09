@@ -48,7 +48,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { useRoute } from "vue-router";
 import axios from "axios";
 
@@ -63,6 +63,11 @@ export default {
     const newComment = ref("");
     const videoUrl = ref("");
     const thumbnailUrl = ref("");
+    
+    const currentPage = ref(0);
+    const pageSize = ref(5);
+    const hasMoreComments = ref(true);
+    const loadingComments = ref(false);
 
     const videoId = route.params.id;
 
@@ -74,14 +79,48 @@ export default {
       likeCount.value = res.data.likeCount;
       commentCount.value = res.data.commentCount;
 
-      // Check if user has liked the video
       const likedRes = await axios.get(`http://localhost:8080/api/videoPosts/${videoId}/liked`);
       liked.value = likedRes.data;
     };
 
-    const loadComments = async () => {
-      const res = await axios.get(`http://localhost:8080/api/videoPosts/${videoId}/comments`);
-      comments.value = res.data;
+    const loadComments = async (append = false) => {
+      if (loadingComments.value || !hasMoreComments.value) return;
+      console.log('Loading comments - page:', currentPage.value, 'append:', append);
+      loadingComments.value = true;
+      try {
+        const res = await axios.get(`http://localhost:8080/api/comments/${videoId}/comments`, {
+          params: {
+            page: currentPage.value,
+            size: pageSize.value
+          }
+        });
+        
+        const newComments = res.data.content || res.data;
+        
+        if (append) {
+          comments.value = [...comments.value, ...newComments];
+        } else {
+          comments.value = newComments;
+        }
+        
+        commentCount.value = res.data.totalElements || comments.value.length;
+        hasMoreComments.value = !res.data.last;
+        currentPage.value++;
+      } catch (err) {
+        console.error("Error loading comments:", err);
+      } finally {
+        loadingComments.value = false;
+      }
+    };
+
+    const handleScroll = () => {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const scrollHeight = document.documentElement.scrollHeight;
+      const clientHeight = document.documentElement.clientHeight;
+      
+      if (scrollTop + clientHeight >= scrollHeight - 200 && !loadingComments.value && hasMoreComments.value) {
+        loadComments(true);
+      }
     };
 
     const toggleLike = async () => {
@@ -94,13 +133,14 @@ export default {
       if (!newComment.value.trim()) return;
 
       try {
-        await axios.post(`http://localhost:8080/api/videoPosts/${videoId}/comments`, {
+        await axios.post(`http://localhost:8080/api/comments/${videoId}`, {
           content: newComment.value
         });
 
-        // Reload comments after adding
-        await loadComments();
-        commentCount.value++;
+        // Reset and reload
+        currentPage.value = 0;
+        hasMoreComments.value = true;
+        await loadComments(false);
         newComment.value = "";
       } catch (err) {
         console.error("Error adding comment:", err);
@@ -115,6 +155,11 @@ export default {
     onMounted(async () => {
       await loadVideo();
       await loadComments();
+      window.addEventListener('scroll', handleScroll);
+    });
+
+    onUnmounted(() => {
+      window.removeEventListener('scroll', handleScroll);
     });
 
     return {
@@ -126,6 +171,7 @@ export default {
       newComment,
       videoUrl,
       thumbnailUrl,
+      loadingComments,
       toggleLike,
       addComment,
       formatDate

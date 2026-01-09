@@ -3,6 +3,7 @@ package com.isa.jutjubic.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import org.hibernate.annotations.Cache;
 import java.time.LocalDateTime;
 import java.util.Date;
 
@@ -13,6 +14,8 @@ import java.util.Date;
 @ToString
 @Entity
 @Builder
+@Cacheable
+@Cache(usage = org.hibernate.annotations.CacheConcurrencyStrategy.READ_WRITE)
 public class VideoPost {
 
     @Id

@@ -2,6 +2,7 @@ package com.isa.jutjubic.repository;
 
 import com.isa.jutjubic.model.Comment;
 import com.isa.jutjubic.model.VideoPost;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -17,6 +18,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
             "JOIN FETCH c.author " +
             "WHERE c.videoPost.id = :videoId " +
             "ORDER BY c.createdAt DESC")
-    List<Comment> findAllByVideoId(@Param("videoId") Integer videoId);
+    Page<Comment> findAllByVideoId(@Param("videoId") Long videoId,Pageable pageable);
+
 
 }
