@@ -86,10 +86,10 @@
 
 
 		<!-- Hibernate L2 Cache -->
-		<dependency>
+		<!--dependency>
 			<groupId>org.hibernate.orm</groupId>
 			<artifactId>hibernate-jcache</artifactId>
-		</dependency>
+		</dependency> -->
 
 		<!-- JAXB for XML parsing -->
 		<dependency>
@@ -101,12 +101,13 @@
 			<groupId>org.glassfish.jaxb</groupId>
 			<artifactId>jaxb-runtime</artifactId>
 		</dependency>
-		<dependency>
+
+		<!--dependency>
 			<groupId>org.testng</groupId>
 			<artifactId>testng</artifactId>
 			<version>RELEASE</version>
 			<scope>compile</scope>
-		</dependency>
+		</dependency> -->
 
 	</dependencies>
 
