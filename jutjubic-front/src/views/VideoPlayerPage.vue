@@ -19,11 +19,30 @@
             </button>
             <span class="like-count">{{ likeCount }}</span>
           </div>
+          <span class="view-count">
+              <i class="fas fa-eye"></i> {{ video.viewCount }} views
+            </span>
           <p class="created-at">{{ formatDate(video.createdAt) }}</p>
         </div>
       </div>
 
       <p class="description">{{ video.description }}</p>
+
+      <div class="extra-info">
+        <div v-if="video.location" class="location-badge">
+          <i class="fas fa-map-marker-alt"></i> {{ video.location }}
+        </div>
+
+        <div class="tags-list">
+          <span
+              v-for="tag in splitTags(video.tags)"
+              :key="tag"
+              class="tag-item"
+          >
+            #{{ tag }}
+          </span>
+        </div>
+      </div>
 
       <div class="comment-form">
         <input
@@ -58,11 +77,18 @@ export default {
     const video = ref({});
     const comments = ref([]);
     const likeCount = ref(0);
+    const viewCount = ref(0);
     const commentCount = ref(0);
     const liked = ref(false);
     const newComment = ref("");
     const videoUrl = ref("");
     const thumbnailUrl = ref("");
+
+    const splitTags = (tagsString) => {
+      if (!tagsString) return [];
+      // Razdvaja string po zarezu i briše prazna mesta
+      return tagsString.split(',').map(t => t.trim());
+    };
 
     const videoId = route.params.id;
 
@@ -72,6 +98,7 @@ export default {
       videoUrl.value = `http://localhost:8080/${res.data.videoPath.replace(/\\/g, '/')}`;
       thumbnailUrl.value = `http://localhost:8080/api/videoPosts/${videoId}/thumbnail`;
       likeCount.value = res.data.likeCount;
+      viewCount.value = res.data.viewCount;
       commentCount.value = res.data.commentCount;
 
       // Check if user has liked the video
@@ -105,7 +132,16 @@ export default {
       } catch (err) {
         console.error("Error adding comment:", err);
       }
+
     };
+
+    /* const incrementView = async () => {
+       try {
+         await axios.post(`http://localhost:8080/api/videoPosts/${videoId}/view`);
+       } catch (err) {
+         console.error("Error incrementing view count:", err);
+       }
+     };   */
 
     const formatDate = (dateStr) => {
       if (!dateStr) return "";
@@ -113,6 +149,7 @@ export default {
     };
 
     onMounted(async () => {
+
       await loadVideo();
       await loadComments();
     });
@@ -128,7 +165,9 @@ export default {
       thumbnailUrl,
       toggleLike,
       addComment,
-      formatDate
+      formatDate,
+      splitTags,
+      location
     };
   },
 };
@@ -226,6 +265,39 @@ video {
   font-size: 1em;
   font-weight: 600;
   color: #333;
+}
+
+.extra-info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin: 15px 0;
+  padding: 10px 0;
+  border-top: 1px solid #eee;
+}
+
+.location-badge {
+  background-color: #f0f0f0;
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-size: 0.85em;
+  color: #555;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.tags-list {
+  display: flex;
+  gap: 10px;
+}
+
+.tag-item {
+  color: #065fd4;
+  font-size: 0.9em;
+  font-weight: 500;
+  cursor: pointer;
 }
 
 .description {
