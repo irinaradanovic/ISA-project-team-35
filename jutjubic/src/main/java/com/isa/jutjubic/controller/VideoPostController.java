@@ -41,11 +41,18 @@ public class VideoPostController {
 
 
    @GetMapping("/{id}")
-   @Transactional
+   //@Transactional
     public ResponseEntity<VideoPostDto> getPostById(@PathVariable Integer id) {
         VideoPostDto post = postService.getById(id);
+        postService.incrementViews(id);
         return ResponseEntity.ok(post);
     }
+
+   /* @PostMapping("/{id}/view")
+    public ResponseEntity<Void> incrementView(@PathVariable Integer id) {
+        postService.incrementView(id);
+        return ResponseEntity.ok().build();
+    } */
 
 
     private VideoPostDto mapToDto(VideoPost post) {
@@ -82,8 +89,8 @@ public class VideoPostController {
             dto.setLocation(location);
 
             try {
-                VideoPost post = postService.createPost(dto);
-                return ResponseEntity.ok(postService.mapToDto(post));
+                VideoPostDto post = postService.createPost(dto);
+                return ResponseEntity.ok(post);
             } catch (IOException e) {
                 return ResponseEntity.badRequest().body("Upload failed: " + e.getMessage());
             }
