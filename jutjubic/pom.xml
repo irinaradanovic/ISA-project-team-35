@@ -77,17 +77,21 @@
 			<optional>true</optional>
 		</dependency>
 
+		<!-- Ehcache with Jakarta support -->
 		<dependency>
 			<groupId>org.ehcache</groupId>
 			<artifactId>ehcache</artifactId>
 			<classifier>jakarta</classifier>
 		</dependency>
 
-		<dependency>
-			<groupId>javax.cache</groupId>
-			<artifactId>cache-api</artifactId>
-		</dependency>
 
+		<!-- Hibernate L2 Cache -->
+		<!--dependency>
+			<groupId>org.hibernate.orm</groupId>
+			<artifactId>hibernate-jcache</artifactId>
+		</dependency> -->
+
+		<!-- JAXB for XML parsing -->
 		<dependency>
 			<groupId>jakarta.xml.bind</groupId>
 			<artifactId>jakarta.xml.bind-api</artifactId>
@@ -97,6 +101,13 @@
 			<groupId>org.glassfish.jaxb</groupId>
 			<artifactId>jaxb-runtime</artifactId>
 		</dependency>
+
+		<!--dependency>
+			<groupId>org.testng</groupId>
+			<artifactId>testng</artifactId>
+			<version>RELEASE</version>
+			<scope>compile</scope>
+		</dependency> -->
 
 	</dependencies>
 

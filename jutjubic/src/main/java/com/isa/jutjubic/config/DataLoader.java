@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
 
+import static java.lang.Math.random;
+
 
 @Component
 @Profile("local") // Pokreće se samo sa -Dspring.profiles.active=local || Run > Edit Configuration > Modify options > Add VM options
@@ -124,6 +126,7 @@ public class DataLoader implements CommandLineRunner {
 
         List<User> owners = List.of(user1, user2);
         int videoCount = 100;
+        Random random = new Random();
 
         for (int i = 1; i <= videoCount; i++) {
 
@@ -136,14 +139,15 @@ public class DataLoader implements CommandLineRunner {
                     .createdAt(LocalDateTime.now())
                     .location(randomLocation())
                     .owner(owners.get(i % 2))
-                    .likeCount(0)
+                    .likeCount(random.nextInt(10))
                     .commentCount(3)  //za pocetak 3 komentara
-                    .viewCount(0)
+                    .viewCount(random.nextInt(100))
+                    //.viewCount(0)
                     .build();
 
             videoPostRepository.save(videoPost);
 
-            for (int j = 1; j <= 3; j++) {
+            for (int j = 1; j <= 15; j++) {
                 Comment comment = Comment.builder()
                         .content("Komentar " + j + " na VideoPost " + i)
                         .author(owners.get((i + j) % 2))

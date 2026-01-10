@@ -9,6 +9,9 @@ import com.isa.jutjubic.repository.CommentRepository;
 import com.isa.jutjubic.repository.UserRepository;
 import com.isa.jutjubic.repository.VideoPostRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -35,13 +38,10 @@ public class CommentService {
     }
 
 
-
-    public List<CommentDto> getCommentsByVideoId(Integer videoId) {
-        return commentRepository.findAllByVideoId(videoId)
-                .stream()
-                .sorted((a,b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
-                .map(this::mapToDTO)
-                .toList();
+    @Transactional(readOnly = true)
+    public Page<CommentDto> getCommentsByVideoId(Long videoId, Pageable pageable) {
+            Page<Comment> commentPage= commentRepository.findAllByVideoId(videoId,pageable);
+            return commentPage.map(this::mapToDTO);
     }
 
     private CommentDto mapToDTO(Comment c) {
@@ -53,4 +53,21 @@ public class CommentService {
                 .build();
     }
 
+    @Transactional
+    public CommentDto createComment(Long videoId, String content) {
+        User currentUser = getCurrentUser();
+
+        VideoPost videoPost = videoPostRepository.findById(Math.toIntExact(videoId))
+                .orElseThrow(() -> new RuntimeException("Video not found"));
+
+        Comment comment = Comment.builder()
+                .content(content)
+                .author(currentUser)
+                .videoPost(videoPost)
+                .createdAt(new Date())
+                .build();
+
+        Comment saved = commentRepository.save(comment);
+        return mapToDTO(saved);
+    }
 }

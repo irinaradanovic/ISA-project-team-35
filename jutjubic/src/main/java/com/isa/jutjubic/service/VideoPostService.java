@@ -7,6 +7,7 @@ import com.isa.jutjubic.model.VideoPost;
 import com.isa.jutjubic.repository.UserRepository;
 import com.isa.jutjubic.repository.VideoPostRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -36,6 +37,9 @@ public class VideoPostService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private CacheManager cacheManager;
+
     public List<VideoPostDto> getAllPosts() {
         return postRepository.findAll()
                 .stream()
@@ -62,7 +66,7 @@ public class VideoPostService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public VideoPost createPost(VideoPostUploadDto dto) throws IOException {
+    public VideoPostDto createPost(VideoPostUploadDto dto) throws IOException {
         if (dto.getVideo().getSize() > 200 * 1024 * 1024) {
             throw new IOException("Video file too large (max 200MB)");
         }
@@ -96,7 +100,9 @@ public class VideoPostService {
             post.setOwner(owner);
 
 
-            return postRepository.save(post);
+            //return postRepository.save(post);
+            postRepository.save(post);
+            return mapToDto(post);
 
         } catch (IOException e) {
             // rollback fajlova ako upload ne uspe
@@ -108,11 +114,17 @@ public class VideoPostService {
 
     @Transactional
     public void deletePost(Integer id) throws IOException {
-        VideoPost post = postRepository.findById(id)
+        VideoPost post = postRepository.findByIdWithOwner(id)
                 .orElseThrow(() -> new NoSuchElementException("VideoPost not found with id " + id));
+        post.setDeleted(true);
 
-        // 1. Obrisi fajlove sa diska
         if (post.getThumbnailPath() != null) {
+            cacheManager.getCache("thumbnails")
+                    .evict(post.getThumbnailPath());
+        }
+
+        // 1. obrisi fajlove sa diska
+      /*  if (post.getThumbnailPath() != null) {
             fileStorageService.deleteFile(post.getThumbnailPath()); // ovo uklanja i iz keša
         }
         if (post.getVideoPath() != null) {
@@ -120,31 +132,35 @@ public class VideoPostService {
             if (Files.exists(videoPath)) {
                 Files.delete(videoPath);
             }
-        }
+        }  */
 
-        // 2. Obrisi iz baze
-        postRepository.delete(post);
+        // 2. obrisi iz baze
+        //postRepository.delete(post);
     }
 
 
     public VideoPostDto getById(Integer Id){
-        VideoPost post =  postRepository.findById(Id).orElseThrow(() -> new NoSuchElementException("VideoPost not found with id " + Id));
+        VideoPost post =  postRepository.findByIdWithOwner(Id).orElseThrow(() -> new NoSuchElementException("VideoPost not found with id " + Id));
         return mapToDto(post);
     }
 
-    //@Cacheable(value = "thumbnails", key = "#videoId")
     public byte[] getThumbnail(Integer videoId) {
-        // 1. Uzimamo samo putanju (brz upit)
         String path = postRepository.findThumbnailPathById(videoId)
                 .orElseThrow(() -> new NoSuchElementException("Thumbnail path not found for id " + videoId));
-
-        // 2. Pozivamo FileStorage koji ima @Cacheable
-        return fileStorageService.loadThumbnail(path);
+        return fileStorageService.loadThumbnail(path);   //KESIRANJE IZVRSENO FILE STORAGE SERVICE
     }
 
     @Transactional(readOnly = true)
     public Page<VideoPostDto> getLatestVideos(Pageable pageable) {
         return postRepository.findAllByOrderByCreatedAtDesc(pageable)
                 .map(this::mapToDto);
+    }
+
+   // @Transactional
+    public void incrementViews(Integer videoId) {
+        int updated = postRepository.incrementViews(videoId);
+        if (updated == 0) {
+            throw new NoSuchElementException("Video not found with id: " + videoId);
+        }
     }
 }

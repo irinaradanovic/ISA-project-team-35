@@ -19,11 +19,30 @@
             </button>
             <span class="like-count">{{ likeCount }}</span>
           </div>
+          <span class="view-count">
+              <i class="fas fa-eye"></i> {{ video.viewCount }} views
+            </span>
           <p class="created-at">{{ formatDate(video.createdAt) }}</p>
         </div>
       </div>
 
       <p class="description">{{ video.description }}</p>
+
+      <div class="extra-info">
+        <div v-if="video.location" class="location-badge">
+          <i class="fas fa-map-marker-alt"></i> {{ video.location }}
+        </div>
+
+        <div class="tags-list">
+          <span
+              v-for="tag in splitTags(video.tags)"
+              :key="tag"
+              class="tag-item"
+          >
+            #{{ tag }}
+          </span>
+        </div>
+      </div>
 
       <div class="comment-form">
         <input
@@ -48,7 +67,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { useRoute } from "vue-router";
 import axios from "axios";
 
@@ -58,11 +77,23 @@ export default {
     const video = ref({});
     const comments = ref([]);
     const likeCount = ref(0);
+    const viewCount = ref(0);
     const commentCount = ref(0);
     const liked = ref(false);
     const newComment = ref("");
     const videoUrl = ref("");
     const thumbnailUrl = ref("");
+    
+    const currentPage = ref(0);
+    const pageSize = ref(5);
+    const hasMoreComments = ref(true);
+    const loadingComments = ref(false);
+
+    const splitTags = (tagsString) => {
+      if (!tagsString) return [];
+      // Razdvaja string po zarezu i briše prazna mesta
+      return tagsString.split(',').map(t => t.trim());
+    };
 
     const videoId = route.params.id;
 
@@ -72,16 +103,51 @@ export default {
       videoUrl.value = `http://localhost:8080/${res.data.videoPath.replace(/\\/g, '/')}`;
       thumbnailUrl.value = `http://localhost:8080/api/videoPosts/${videoId}/thumbnail`;
       likeCount.value = res.data.likeCount;
+      viewCount.value = res.data.viewCount;
       commentCount.value = res.data.commentCount;
 
-      // Check if user has liked the video
       const likedRes = await axios.get(`http://localhost:8080/api/videoPosts/${videoId}/liked`);
       liked.value = likedRes.data;
     };
 
-    const loadComments = async () => {
-      const res = await axios.get(`http://localhost:8080/api/videoPosts/${videoId}/comments`);
-      comments.value = res.data;
+    const loadComments = async (append = false) => {
+      if (loadingComments.value || !hasMoreComments.value) return;
+      console.log('Loading comments - page:', currentPage.value, 'append:', append);
+      loadingComments.value = true;
+      try {
+        const res = await axios.get(`http://localhost:8080/api/comments/${videoId}/comments`, {
+          params: {
+            page: currentPage.value,
+            size: pageSize.value
+          }
+        });
+        
+        const newComments = res.data.content || res.data;
+        
+        if (append) {
+          comments.value = [...comments.value, ...newComments];
+        } else {
+          comments.value = newComments;
+        }
+        
+        commentCount.value = res.data.totalElements || comments.value.length;
+        hasMoreComments.value = !res.data.last;
+        currentPage.value++;
+      } catch (err) {
+        console.error("Error loading comments:", err);
+      } finally {
+        loadingComments.value = false;
+      }
+    };
+
+    const handleScroll = () => {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const scrollHeight = document.documentElement.scrollHeight;
+      const clientHeight = document.documentElement.clientHeight;
+      
+      if (scrollTop + clientHeight >= scrollHeight - 200 && !loadingComments.value && hasMoreComments.value) {
+        loadComments(true);
+      }
     };
 
     const toggleLike = async () => {
@@ -94,18 +160,28 @@ export default {
       if (!newComment.value.trim()) return;
 
       try {
-        await axios.post(`http://localhost:8080/api/videoPosts/${videoId}/comments`, {
+        await axios.post(`http://localhost:8080/api/comments/${videoId}`, {
           content: newComment.value
         });
 
-        // Reload comments after adding
-        await loadComments();
-        commentCount.value++;
+        // Reset and reload
+        currentPage.value = 0;
+        hasMoreComments.value = true;
+        await loadComments(false);
         newComment.value = "";
       } catch (err) {
         console.error("Error adding comment:", err);
       }
+
     };
+
+    /* const incrementView = async () => {
+       try {
+         await axios.post(`http://localhost:8080/api/videoPosts/${videoId}/view`);
+       } catch (err) {
+         console.error("Error incrementing view count:", err);
+       }
+     };   */
 
     const formatDate = (dateStr) => {
       if (!dateStr) return "";
@@ -113,8 +189,14 @@ export default {
     };
 
     onMounted(async () => {
+
       await loadVideo();
       await loadComments();
+      window.addEventListener('scroll', handleScroll);
+    });
+
+    onUnmounted(() => {
+      window.removeEventListener('scroll', handleScroll);
     });
 
     return {
@@ -126,9 +208,12 @@ export default {
       newComment,
       videoUrl,
       thumbnailUrl,
+      loadingComments,
       toggleLike,
       addComment,
-      formatDate
+      formatDate,
+      splitTags,
+      location
     };
   },
 };
@@ -150,7 +235,7 @@ export default {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Use global h2 styles, just adjust margin */
+
 h2 {
   margin: 0 0 8px 0;
 }
@@ -226,6 +311,39 @@ video {
   font-size: 1em;
   font-weight: 600;
   color: #333;
+}
+
+.extra-info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin: 15px 0;
+  padding: 10px 0;
+  border-top: 1px solid #eee;
+}
+
+.location-badge {
+  background-color: #f0f0f0;
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-size: 0.85em;
+  color: #555;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.tags-list {
+  display: flex;
+  gap: 10px;
+}
+
+.tag-item {
+  color: #065fd4;
+  font-size: 0.9em;
+  font-weight: 500;
+  cursor: pointer;
 }
 
 .description {

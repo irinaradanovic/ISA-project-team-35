@@ -16,22 +16,5 @@ public class ThumbnailCacheLogger implements CacheEventListener<Object, Object> 
                 cacheEvent.getKey(), cacheEvent.getType());
     }
 
-    /*@Override
-    public void onEvent(CacheEvent<? extends String, ? extends byte[]> cacheEvent) {
-        switch (cacheEvent.getType()) {
-            case CREATED:
-                logger.info("Thumbnail added to cache: {}", cacheEvent.getKey());
-                break;
-            case UPDATED:
-                logger.info("Thumbnail updated in cache: {}", cacheEvent.getKey());
-                break;
-            case REMOVED:
-                logger.info("Thumbnail removed from cache: {}", cacheEvent.getKey());
-                break;
-            case EXPIRED:
-                logger.info("Thumbnail expired from cache: {}", cacheEvent.getKey());
-                break;
-        }
-    } */
 }
 
