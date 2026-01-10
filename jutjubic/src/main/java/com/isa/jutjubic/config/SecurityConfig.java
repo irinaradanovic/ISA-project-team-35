@@ -22,7 +22,7 @@ public class SecurityConfig {
     private final CustomUserDetailsService userDetailsService;
     private final JwtTokenProvider jwtTokenProvider;
 
-    /*@Bean
+   /* @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
@@ -37,10 +37,10 @@ public class SecurityConfig {
         return http.build();
     }*/
 
-    @Bean
+    /*@Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
-    }
+    }*/
 
     // Za autentifikaciju u service sloju
     @Bean
@@ -48,15 +48,13 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    //testiranje
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable()) // isključi CSRF za test
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/test/public").permitAll() // javni endpoint
-                        .anyRequest().authenticated() // ostalo autentifikacija
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .anyRequest().authenticated()
                 );
 
         return http.build();
