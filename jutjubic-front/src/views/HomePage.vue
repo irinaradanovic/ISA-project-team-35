@@ -2,10 +2,13 @@
   <div class="home">
     <!-- Header sa login/register -->
     <header class="home-header">
-      <h1 class="logo">Jutjubic</h1>
+      <h1 class="logo"></h1>
+
+
       <div class="auth-buttons">
         <router-link to="/login" class="auth-btn">Login</router-link>
         <router-link to="/register" class="auth-btn">Register</router-link>
+
       </div>
     </header>
 
