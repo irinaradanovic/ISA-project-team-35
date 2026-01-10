@@ -6,10 +6,15 @@ import com.isa.jutjubic.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.Instant;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -21,6 +26,30 @@ public class AuthController {
     private final JwtTokenProvider tokenProvider;
 
     // =========================
+    // IP RATE LIMITING CONFIG
+    // =========================
+    private static final int MAX_ATTEMPTS_PER_MINUTE = 5;
+    private final Map<String, AttemptInfo> loginAttempts = new ConcurrentHashMap<>();
+
+    private record AttemptInfo(int count, Instant lastAttemptTime) {}
+
+    private boolean isAllowed(String ip) {
+        AttemptInfo attempt = loginAttempts.get(ip);
+        Instant now = Instant.now();
+
+        if (attempt == null || now.isAfter(attempt.lastAttemptTime.plusSeconds(60))) {
+            // Resetujemo broj pokušaja ako je prošla minuta
+            loginAttempts.put(ip, new AttemptInfo(1, now));
+            return true;
+        } else if (attempt.count < MAX_ATTEMPTS_PER_MINUTE) {
+            loginAttempts.put(ip, new AttemptInfo(attempt.count + 1, attempt.lastAttemptTime));
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    // =========================
     // REGISTRACIJA + EMAIL AKTIVACIJA
     // =========================
     @PostMapping("/register")
@@ -28,7 +57,6 @@ public class AuthController {
             @Valid @RequestBody RegisterRequest request,
             HttpServletRequest servletRequest) {
 
-        // Kreiramo osnovni URL aplikacije da bismo napravili link za aktivaciju
         String appUrl = servletRequest.getRequestURL().toString()
                 .replace(servletRequest.getRequestURI(), "");
 
@@ -43,23 +71,30 @@ public class AuthController {
     }
 
     // =========================
-    // LOGIN + JWT
+    // LOGIN + JWT + RATE LIMITING
     // =========================
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletRequest servletRequest) {
+        String clientIp = servletRequest.getRemoteAddr();
 
-        // Autentifikacija korisnika (email + lozinka)
-        Authentication authentication =
-                authenticationManager.authenticate(
-                        new UsernamePasswordAuthenticationToken(
-                                request.getEmail(),
-                                request.getPassword()
-                        )
-                );
+        if (!isAllowed(clientIp)) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body("Too many login attempts from this IP. Please try again later.");
+        }
 
-        // Generišemo JWT token
-        String token = tokenProvider.generateToken(authentication);
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getEmail(),
+                            request.getPassword()
+                    )
+            );
 
-        return ResponseEntity.ok(new LoginResponse(token));
+            String token = tokenProvider.generateToken(authentication);
+            return ResponseEntity.ok(new LoginResponse(token));
+
+        } catch (BadCredentialsException ex) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
+        }
     }
 }
