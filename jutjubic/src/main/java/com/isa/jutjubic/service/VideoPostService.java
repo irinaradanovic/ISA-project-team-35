@@ -21,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
@@ -162,5 +163,16 @@ public class VideoPostService {
         if (updated == 0) {
             throw new NoSuchElementException("Video not found with id: " + videoId);
         }
+    }
+
+    public List<VideoPostDto> getUsersVideos(Long userId){
+        List<VideoPost> videos = postRepository.findByOwnerId(userId);
+
+        if(videos.isEmpty()){
+            throw new NoSuchElementException("Can't find any videos for user id: " + userId);
+        }
+        videos.sort(Comparator.comparing(VideoPost::getCreatedAt).reversed());
+
+        return videos.stream().map(this::mapToDto).toList();
     }
 }

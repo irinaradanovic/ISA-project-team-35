@@ -122,9 +122,39 @@ public class DataLoader implements CommandLineRunner {
                 .active(true)
                 .build();
 
-        userRepository.saveAll(List.of(user1, user2));
+        User user3 = User.builder()
+                .email("miki@test.com")
+                .username("miki")
+                .passwordHash("password") // hash funkcija kada se napravi
+                .firstName("Miki")
+                .lastName("Mikic")
+                .address("Adresa")
+                .active(true)
+                .build();
 
-        List<User> owners = List.of(user1, user2);
+        User user4 = User.builder()
+                .email("jelena@test.com")
+                .username("jelena123")
+                .passwordHash("password") // hash funkcija kada se napravi
+                .firstName("Jelena")
+                .lastName("Jelic")
+                .address("Adresa1")
+                .active(true)
+                .build();
+
+        User user5 = User.builder()
+                .email("milica@test.com")
+                .username("milica20")
+                .passwordHash("password") // hash funkcija kada se napravi
+                .firstName("Milica")
+                .lastName("Milic")
+                .address("Adresa 2")
+                .active(true)
+                .build();
+
+        userRepository.saveAll(List.of(user1, user2 , user3, user4, user5));
+
+        List<User> owners = List.of(user1, user2, user3, user4, user5);
         int videoCount = 100;
         Random random = new Random();
 
@@ -138,7 +168,7 @@ public class DataLoader implements CommandLineRunner {
                     .videoPath("uploads/videos/" + (i%6+1) + ".mp4")
                     .createdAt(LocalDateTime.now())
                     .location(randomLocation())
-                    .owner(owners.get(i % 2))
+                    .owner(owners.get(i%5))
                     .likeCount(random.nextInt(10))
                     .commentCount(3)  //za pocetak 3 komentara
                     .viewCount(random.nextInt(100))
@@ -150,7 +180,7 @@ public class DataLoader implements CommandLineRunner {
             for (int j = 1; j <= 15; j++) {
                 Comment comment = Comment.builder()
                         .content("Komentar " + j + " na VideoPost " + i)
-                        .author(owners.get((i + j) % 2))
+                        .author(owners.get((i + j) % 5))
                         .videoPost(videoPost)
                         .build();
                 commentRepository.save(comment);

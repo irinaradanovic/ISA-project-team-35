@@ -129,4 +129,14 @@ public class VideoPostController {
     }
 
 
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<?> getUserVideos(@PathVariable Long userId){
+       try {
+           return ResponseEntity.ok(postService.getUsersVideos(userId));
+       }catch(NoSuchElementException e){
+           return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+       }
+    }
+
+
 }
