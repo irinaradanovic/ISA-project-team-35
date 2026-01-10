@@ -7,7 +7,7 @@ import LoginView from '@/views/LoginView.vue'
 import RegisterView from '@/views/RegisterView.vue'
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  /*history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
       {
       path: '/create-post',
@@ -29,7 +29,7 @@ const router = createRouter({
           name: 'MyProfilePage',
           component: MyProfilePage
       }
-  ],
+  ],*/
     history: createWebHistory(import.meta.env.BASE_URL),
     routes: [
         {
