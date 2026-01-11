@@ -4,6 +4,7 @@ import com.isa.jutjubic.dto.UserProfileDto;
 import com.isa.jutjubic.dto.UserProfileUpdateDto;
 import com.isa.jutjubic.model.User;
 import com.isa.jutjubic.repository.UserRepository;
+import com.isa.jutjubic.security.utils.SecurityUtils;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -24,8 +25,8 @@ public class UserService {
     }
 
     @Transactional
-    public UserProfileDto updateProfile(Long id, UserProfileUpdateDto dto) {
-        User user = userRepository.findById(id)
+    public UserProfileDto updateProfile(UserProfileUpdateDto dto) {
+        User user = userRepository.findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
 
         // proveravamo svako polje pre update-a

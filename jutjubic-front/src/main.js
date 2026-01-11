@@ -14,11 +14,26 @@ const app = createApp(App)
 // Dodajemo Pinia store
 app.use(createPinia())
 
-// Dodajemo router
-app.use(router)
 
 // Postavljamo axios globalno da možeš koristiti preko app.config.globalProperties
 app.config.globalProperties.$axios = axios
+
+// ==========================
+// OPTIONAL: Global axios interceptor
+// ==========================
+// Ako store ima token, svaki request šalje Authorization header
+import { useAuthStore } from './stores/auth'
+const auth = useAuthStore();
+
+axios.interceptors.request.use(config => {
+    if (auth.token) {
+        config.headers.Authorization = `Bearer ${auth.token}`;
+    }
+    return config;
+});
+
+// Dodajemo router
+app.use(router)
 
 // Mount aplikacije
 app.mount('#app')

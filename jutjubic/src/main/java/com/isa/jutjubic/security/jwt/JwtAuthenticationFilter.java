@@ -31,6 +31,9 @@ public class JwtAuthenticationFilter extends GenericFilter {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         String header = httpRequest.getHeader("Authorization");
 
+        //System.out.println("Authorization header: " + header);
+
+
         if (header != null && header.startsWith("Bearer ")) {
 
             String token = header.substring(7);

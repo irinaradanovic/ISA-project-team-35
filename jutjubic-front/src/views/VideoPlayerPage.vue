@@ -343,7 +343,6 @@ video {
   color: #065fd4;
   font-size: 0.9em;
   font-weight: 500;
-  cursor: pointer;
 }
 
 .description {
