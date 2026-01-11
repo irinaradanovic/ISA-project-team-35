@@ -4,7 +4,7 @@
       <div class="profile-left">
         <img src="@/assets/profile-picture.png" class="profile-img" />
 
-        <h2>{{ user.username }}'s Profile</h2>
+        <h2 v-if="user">{{ user.username }}'s Profile</h2> <!-- Mora if kako bi se loadala stranica prvo -->
       </div>
     </div>
 
@@ -44,84 +44,59 @@
   </div>
 </template>
 
-<script>
-import axios from "axios";
-import { useAuthStore } from '@/stores/auth';
+<script setup>
+import { ref, onMounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import axios from 'axios';
 
-export default {
-  name: "MyProfilePage",
-  setup() {
-  },
+const route = useRoute();
+const router = useRouter();
 
-  data() {
-    return {
-      user: null,
-      videos: [],
-      editing: false,
-      edit: {
-        username: "",
-        firstName: "",
-        lastName: "",
-        address: ""
-      }
-    };
-  },
+const user = ref(null);
+const videos = ref([]);
 
-  computed: {
-    userId() {
-      return this.$route.params.userId;
-    },
-  },
-
-  async created() {
-    await this.loadProfile();
-    await this.loadVideos();
-  },
-
-  methods: {
-    async loadProfile() {
-    try {
-        const id = this.$route.params.userId;
-        const res = await axios.get(`http://localhost:8080/api/users/${id}`);
-        this.user = res.data;
-
-        this.edit.username = this.user.username;
-        this.edit.firstName = this.user.firstName;
-        this.edit.lastName = this.user.lastName;
-        this.edit.address = this.user.address;
-    } catch (e) {
-        console.error("Profile load failed", e);
-        alert("User not found");
-    }
-    },
-
-    async loadVideos() {
-      try {
-        const id = this.userId || this.authStore.user?.id;
-        const res = await axios.get(`http://localhost:8080/api/videoPosts/user/${id}`);
-        this.videos = res.data;
-      } catch (e) {
-        console.error("Failed to load videos", e);
-      }
-    },
-
-
-    formatDate(date) {
-      return new Date(date).toLocaleString("en-GB", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
-      });
-    },
-
-
-    goToVideo(id) {
-      this.$router.push(`/video/${id}`);
-    }
+const loadProfile = async (id) => {
+  try {
+    const { data } = await axios.get(`http://localhost:8080/api/users/${id}`);
+    user.value = data;
+  } catch (e) {
+    console.error('Profile load failed', e);
+    alert('User not found');
   }
 };
+
+const loadVideos = async (id) => {
+  try {
+    const { data } = await axios.get(`http://localhost:8080/api/videoPosts/user/${id}`);
+    videos.value = data;
+  } catch (e) {
+    console.error('Failed to load videos', e);
+  }
+};
+
+const formatDate = (date) => {
+  return new Date(date).toLocaleString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+const goToVideo = (id) => {
+  router.push(`/video/${id}`);
+};
+
+const refresh = async () => {
+  const id = route.params.userId;
+  if (!id) return;
+  await Promise.all([loadProfile(id), loadVideos(id)]);
+};
+
+onMounted(refresh);
+watch(() => route.params.userId, refresh);
+
 </script>
 
 <style scoped>
