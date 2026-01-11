@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
 
 import org.springframework.data.domain.Pageable;
 import java.util.List;
@@ -31,7 +32,11 @@ public class CommentController {
     @PostMapping("/{videoId}")
     public ResponseEntity<CommentDto> createComment(
             @PathVariable Long videoId,
-            @RequestBody Map<String, String> request) {
+            @RequestBody Map<String, String> request,
+            Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         String content = request.get("content");
         CommentDto comment = commentService.createComment(videoId, content);
         return ResponseEntity.status(HttpStatus.CREATED).body(comment);
