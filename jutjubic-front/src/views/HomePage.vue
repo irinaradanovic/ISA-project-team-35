@@ -7,6 +7,7 @@
       <div class="auth-buttons">
         <template v-if="auth.token">
           <router-link to="/my-profile" class="auth-btn">My Profile</router-link>
+          <router-link to="/create-post" class="auth-btn">Create Post</router-link>
           <button @click="handleLogout" class="auth-btn logout-btn">Logout</button>
         </template>
         <template v-else>
@@ -31,7 +32,7 @@
 
           <div class="video-bottom-section">
             <router-link :to="`/user/${video.ownerId}`" class="channel-icon-link">
-                <img class="channel-icon" src="@/assets/profile-picture.png" alt="Channel Icon">
+              <img class="channel-icon" src="@/assets/profile-picture.png" alt="Channel Icon">
             </router-link>
             <div class="video-info">
               <router-link :to="`/video/${video.id}`" class="video-title">{{ video.title }}</router-link>
