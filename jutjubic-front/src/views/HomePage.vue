@@ -227,7 +227,7 @@ export default {
     
     const videos = ref([]);
     const currentPage = ref(0);
-    const pageSize = ref(10);
+    const pageSize = ref(20);
     const totalPages = ref(0);
     const totalElements = ref(0);
     const loading = ref(false);
