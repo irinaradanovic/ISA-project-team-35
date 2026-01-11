@@ -64,6 +64,7 @@ public class VideoPostService {
         dto.setLikeCount(post.getLikeCount());
         dto.setCommentCount(post.getCommentCount());
         dto.setViewCount(post.getViewCount());
+        dto.setOwnerId(post.getOwner().getId());
         return dto;
     }
 

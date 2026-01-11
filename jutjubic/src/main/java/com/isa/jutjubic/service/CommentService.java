@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -31,11 +33,16 @@ public class CommentService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private AuthService authService;
+
     // TEMPORARY - fixed user until login is implemented
+    /*/
     private User getCurrentUser() {
         return userRepository.findById(1L).orElseThrow(() ->
                 new RuntimeException("User not found"));
     }
+*/
 
 
     @Transactional(readOnly = true)
@@ -55,7 +62,7 @@ public class CommentService {
 
     @Transactional
     public CommentDto createComment(Long videoId, String content) {
-        User currentUser = getCurrentUser();
+        User currentUser = authService.getCurrentUser();
 
         VideoPost videoPost = videoPostRepository.findById(Math.toIntExact(videoId))
                 .orElseThrow(() -> new RuntimeException("Video not found"));

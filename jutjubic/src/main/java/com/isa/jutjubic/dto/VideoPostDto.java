@@ -19,6 +19,7 @@ public class VideoPostDto {
     private LocalDateTime createdAt;
     private String location;
     private String ownerUsername;
+    private Long ownerId;
     private int likeCount;
     private int commentCount;
     private int viewCount;

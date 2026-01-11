@@ -18,6 +18,7 @@
               <i class="fas fa-thumbs-up"></i>
             </button>
             <span class="like-count">{{ likeCount }}</span>
+            <p v-if="likeError" class="error-message">{{ likeError }}</p>
           </div>
           <span class="view-count">
               <i class="fas fa-eye"></i> {{ video.viewCount }} views
@@ -52,7 +53,7 @@
         />
         <button @click="addComment" class="comment-submit-btn">Comment</button>
       </div>
-
+      <p v-if="commentError" class="error-message">{{ commentError }}</p>
       <div class="comments-section">
         <p class="comment-count">{{ commentCount }} comments</p>
 
@@ -70,6 +71,7 @@
 import { ref, onMounted, onUnmounted } from "vue";
 import { useRoute } from "vue-router";
 import axios from "axios";
+import { useAuthStore } from "@/stores/auth";
 
 export default {
   setup() {
@@ -77,12 +79,15 @@ export default {
     const video = ref({});
     const comments = ref([]);
     const likeCount = ref(0);
+    const likeError = ref("");
     const viewCount = ref(0);
     const commentCount = ref(0);
     const liked = ref(false);
     const newComment = ref("");
+    const commentError = ref("");
     const videoUrl = ref("");
     const thumbnailUrl = ref("");
+    const auth = useAuthStore();
     
     const currentPage = ref(0);
     const pageSize = ref(5);
@@ -106,8 +111,12 @@ export default {
       viewCount.value = res.data.viewCount;
       commentCount.value = res.data.commentCount;
 
-      const likedRes = await axios.get(`http://localhost:8080/api/videoPosts/${videoId}/liked`);
-      liked.value = likedRes.data;
+   try {
+          const likedRes = await axios.get(`http://localhost:8080/api/videoPosts/${videoId}/liked`);
+          liked.value = likedRes.data;
+        } catch (err) {
+          liked.value = false;
+        }
     };
 
     const loadComments = async (append = false) => {
@@ -151,29 +160,55 @@ export default {
     };
 
     const toggleLike = async () => {
+      likeError.value = "";
+      if (!auth.token) {
+        likeError.value = "You must be logged in to like videos.";
+        return;
+      }
+
+    try {
       const res = await axios.post(`http://localhost:8080/api/videoPosts/${videoId}/like`);
       likeCount.value = res.data;
       liked.value = !liked.value;
-    };
-
-    const addComment = async () => {
-      if (!newComment.value.trim()) return;
-
-      try {
-        await axios.post(`http://localhost:8080/api/comments/${videoId}`, {
-          content: newComment.value
-        });
-
-        // Reset and reload
-        currentPage.value = 0;
-        hasMoreComments.value = true;
-        await loadComments(false);
-        newComment.value = "";
-      } catch (err) {
-        console.error("Error adding comment:", err);
+    } catch (err) {
+      console.error("Error toggling like:", err);
+      if (err.response?.status === 401) {
+        likeError.value = "Your session has expired. Please log in again.";
+      } else {
+        likeError.value = "Failed to like video. Please try again.";
       }
-
+    }
     };
+
+const addComment = async () => {
+  commentError.value = "";
+
+  if (!auth.token) {
+    commentError.value = "You must be logged in to comment.";
+    return;
+  }
+
+  if (!newComment.value.trim()) return;
+
+  try {
+    await axios.post(`http://localhost:8080/api/comments/${videoId}`, { content: newComment.value });
+    currentPage.value = 0;
+    hasMoreComments.value = true;
+    await loadComments(false);
+    newComment.value = "";
+  } catch (err) {
+    console.error("Error adding comment:", err);
+    if (err.response?.status === 403) {
+      commentError.value = "You must be logged in to comment.";
+    } else if (err.response?.status === 401) {
+      commentError.value = "Your session has expired. Please log in again.";
+    } else if (err.response?.status === 400) {
+      commentError.value = err.response.data?.message || "Invalid comment.";
+    } else {
+      commentError.value = "Failed to post comment. Please try again.";
+    }
+  }
+};
 
     /* const incrementView = async () => {
        try {
@@ -205,7 +240,9 @@ export default {
       likeCount,
       commentCount,
       liked,
+      likeError,
       newComment,
+      commentError,
       videoUrl,
       thumbnailUrl,
       loadingComments,
@@ -421,6 +458,16 @@ video {
 .comment-date {
   font-size: 0.8em;
   color: #999;
+}
+.error-message { 
+  color: #d32f2f;
+  background-color: #ffebee;
+  border: 1px solid #ef5350;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 10px 0 20px 0;
+  font-size: 0.9em;
+  font-weight: 500;
 }
 </style>
 

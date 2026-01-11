@@ -43,6 +43,7 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/comments/**").permitAll() //dozvoli pregled komentara
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/videoPosts/*/thumbnail").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/videoPosts").permitAll() // Dozvoli listanje videa svima
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/users/**").permitAll() // Dozvoli pregled profila
                         .anyRequest().authenticated() // sve ostalo zahteva autentifikaciju
                 )
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, userDetailsService),

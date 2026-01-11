@@ -5,9 +5,15 @@
       <h1 class="logo"></h1>
 
       <div class="auth-buttons">
-        <router-link to="/login" class="auth-btn">Login</router-link>
-        <router-link to="/register" class="auth-btn">Register</router-link>
-
+        <template v-if="auth.token">
+          <router-link to="/my-profile" class="auth-btn">My Profile</router-link>
+          <router-link to="/create-post" class="auth-btn">Create Post</router-link>
+          <button @click="handleLogout" class="auth-btn logout-btn">Logout</button>
+        </template>
+        <template v-else>
+          <router-link to="/login" class="auth-btn">Login</router-link>
+          <router-link to="/register" class="auth-btn">Register</router-link>
+        </template>
       </div>
     </header>
 
@@ -25,7 +31,9 @@
           </router-link>
 
           <div class="video-bottom-section">
-            <img class="channel-icon" src="@/assets/profile-picture.png" alt="Channel Icon">
+            <router-link :to="`/user/${video.ownerId}`" class="channel-icon-link">
+              <img class="channel-icon" src="@/assets/profile-picture.png" alt="Channel Icon">
+            </router-link>
             <div class="video-info">
               <router-link :to="`/video/${video.id}`" class="video-title">{{ video.title }}</router-link>
               <a href="#" class="channel-name">{{ video.ownerUsername }}</a>
@@ -53,9 +61,10 @@
   padding: 1rem 2rem;
   background-color: #ffffff;
   border-bottom: 1px solid #e0e0e0;
-  position: sticky;
+  /*position: sticky;
   top: 0;
   z-index: 1000;
+  */
 }
 
 .logo {
@@ -66,10 +75,13 @@
 }
 
 .auth-buttons {
+  position: fixed;
+  top: 1rem;
+  right: 2rem;
   display: flex;
   gap: 1rem;
+  z-index: 2000;
 }
-
 .auth-btn {
   text-decoration: none;
   padding: 0.5rem 1rem;
@@ -193,103 +205,114 @@ body {
   color: #606060;
   font-size: 0.95rem;
 }
+
+.logout-btn {
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+}
 </style>
 
 <script>
-import axios from 'axios'
+import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+import { useRouter } from "vue-router";
+import axios from "axios";
+import { useAuthStore } from "@/stores/auth";
 
 export default {
-  name: 'HomePage',
-  data() {
-    return {
-      videos: [],
-      currentPage: 0,
-      pageSize: 10,
-      totalPages: 0,
-      totalElements: 0,
-      loading: false,
-      hasMore: true,
-      columnsPerRow: 4,
-      rowsPerSection: 2
-    }
-  },
-  computed: {
-    videosPerSection() {
-      return this.columnsPerRow * this.rowsPerSection;
-    },
-    videoSections() {
+  setup() {
+    const router = useRouter();
+    const auth = useAuthStore();
+    
+    const videos = ref([]);
+    const currentPage = ref(0);
+    const pageSize = ref(10);
+    const totalPages = ref(0);
+    const totalElements = ref(0);
+    const loading = ref(false);
+    const hasMore = ref(true);
+    const columnsPerRow = ref(4);
+    const rowsPerSection = ref(2);
+
+    const videosPerSection = computed(() => {
+      return columnsPerRow.value * rowsPerSection.value;
+    });
+
+    const videoSections = computed(() => {
       const sections = [];
-      for (let i = 0; i < this.videos.length; i += this.videosPerSection) {
-        sections.push(this.videos.slice(i, i + this.videosPerSection));
+      for (let i = 0; i < videos.value.length; i += videosPerSection.value) {
+        sections.push(videos.value.slice(i, i + videosPerSection.value));
       }
       return sections;
-    }
-  },
-  mounted() {
-    this.loadPage(0);
-    window.addEventListener('scroll', this.handleScroll);
-    window.addEventListener('resize', this.calculateColumns);
-    this.calculateColumns();
-  },
-  beforeUnmount() {
-    window.removeEventListener('scroll', this.handleScroll);
-    window.removeEventListener('resize', this.calculateColumns);
-  },
-  methods: {
-    calculateColumns() {
+    });
+
+    const handleLogout = () => {
+      auth.logout();
+      router.push('/');
+    };
+
+    const calculateColumns = () => {
       const containerWidth = window.innerWidth - 32;
       const minVideoWidth = 250;
       const gap = 16;
       const columns = Math.max(1, Math.floor((containerWidth + gap) / (minVideoWidth + gap)));
-      this.columnsPerRow = columns;
-    },
-    handleScroll() {
+      columnsPerRow.value = columns;
+    };
+
+    const checkIfScrollable = () => {
+      const isScrollable = document.documentElement.scrollHeight > window.innerHeight;
+      if (!isScrollable && hasMore.value && !loading.value) {
+        loadMoreVideos();
+      }
+    };
+
+    const loadPage = (page) => {
+      if (loading.value) return;
+      loading.value = true;
+      
+      axios.get(`http://localhost:8080/api/videoPosts?page=${page}&size=${pageSize.value}`)
+        .then(response => {
+          const newVideos = response.data.content;
+          if (page === 0) {
+            videos.value = newVideos;
+          } else {
+            videos.value = [...videos.value, ...newVideos];
+          }
+          currentPage.value = response.data.number;
+          totalPages.value = response.data.totalPages;
+          totalElements.value = response.data.totalElements;
+          hasMore.value = currentPage.value < totalPages.value - 1;
+          loading.value = false;
+          
+          nextTick(() => {
+            checkIfScrollable();
+          });
+        })
+        .catch(error => {
+          console.error('There was an error fetching the videos!', error);
+          loading.value = false;
+        });
+    };
+
+    const loadMoreVideos = () => {
+      if (loading.value || !hasMore.value) return;
+      const nextPage = currentPage.value + 1;
+      if (nextPage < totalPages.value) {
+        loadPage(nextPage);
+      }
+    };
+
+    const handleScroll = () => {
       const scrollTop = window.scrollY || document.documentElement.scrollTop;
       const windowHeight = window.innerHeight;
       const docHeight = document.documentElement.scrollHeight;
       if (scrollTop + windowHeight >= docHeight - 200) {
-        this.loadMoreVideos();
+        loadMoreVideos();
       }
-    },
-    checkIfScrollable() {
-      const isScrollable = document.documentElement.scrollHeight > window.innerHeight;
-      if (!isScrollable && this.hasMore && !this.loading) {
-        this.loadMoreVideos();
-      }
-    },
-    loadMoreVideos() {
-      if (this.loading || !this.hasMore) return;
-      const nextPage = this.currentPage + 1;
-      if (nextPage < this.totalPages) {
-        this.loadPage(nextPage);
-      }
-    },
-    loadPage(page) {
-      if (this.loading) return;
-      this.loading = true;
-      axios.get(`http://localhost:8080/api/videoPosts?page=${page}&size=${this.pageSize}`)
-          .then(response => {
-            const newVideos = response.data.content;
-            if (page === 0) {
-              this.videos = newVideos;
-            } else {
-              this.videos = [...this.videos, ...newVideos];
-            }
-            this.currentPage = response.data.number;
-            this.totalPages = response.data.totalPages;
-            this.totalElements = response.data.totalElements;
-            this.hasMore = this.currentPage < this.totalPages - 1;
-            this.loading = false;
-            this.$nextTick(() => {
-              this.checkIfScrollable();
-            });
-          })
-          .catch(error => {
-            console.error('There was an error fetching the videos!', error);
-            this.loading = false;
-          });
-    },
-    formatDate(dateString) {
+    };
+
+    const formatDate = (dateString) => {
       if (!dateString) return '';
       const date = new Date(dateString);
       const now = new Date();
@@ -301,13 +324,37 @@ export default {
       if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
       if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
       return `${Math.floor(diffDays / 365)} years ago`;
-    },
-    thumbnailUrl(video) {
+    };
+
+    const thumbnailUrl = (video) => {
       if (video.thumbnailPath) {
         return `http://localhost:8080/${video.thumbnailPath}`;
       }
       return `http://localhost:8080/api/videoPosts/${video.id}/thumbnail`;
-    }
+    };
+
+    onMounted(() => {
+      loadPage(0);
+      window.addEventListener('scroll', handleScroll);
+      window.addEventListener('resize', calculateColumns);
+      calculateColumns();
+    });
+
+    onUnmounted(() => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', calculateColumns);
+    });
+
+    return {
+      auth,
+      videos,
+      videoSections,
+      loading,
+      hasMore,
+      handleLogout,
+      formatDate,
+      thumbnailUrl
+    };
   }
-}
+};
 </script>
