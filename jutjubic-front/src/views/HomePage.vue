@@ -1,7 +1,7 @@
 <template>
   <div class="home">
     <!-- Header sa login/register -->
-    <header class="home-header">
+    <!--header class="home-header">
       <h1 class="logo"></h1>
 
       <div class="auth-buttons">
@@ -15,7 +15,7 @@
           <router-link to="/register" class="auth-btn">Register</router-link>
         </template>
       </div>
-    </header>
+    </header> -->
 
     <!-- Videos -->
     <div class="videos">
