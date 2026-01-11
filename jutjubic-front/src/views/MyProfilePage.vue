@@ -81,106 +81,93 @@
   </div>
 </template>
 
-<script>
-import axios from "axios";
+<script setup>
+import { ref, reactive, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import axios from 'axios';
 import { useAuthStore } from '@/stores/auth';
 
-export default {
-  name: "MyProfilePage",
-  setup() {
-    const authStore = useAuthStore();
-    return { authStore };
-  },
+const router = useRouter();
+const authStore = useAuthStore();
 
-  data() {
-    return {
-      user: null,
-      videos: [],
-      editing: false,
-      edit: {
-        username: "",
-        firstName: "",
-        lastName: "",
-        address: ""
-      }
-    };
-  },
+const user = ref(null);
+const videos = ref([]);
+const editing = ref(false);
+const edit = reactive({
+  username: '',
+  firstName: '',
+  lastName: '',
+  address: ''
+});
 
-  async created() {
-    // Proveri da li postoji token pre nego što pozoveš API
-    if (this.authStore.token) {
-      await this.loadProfile();
-      await this.loadVideos();
-    }
-  },
+const loadProfile = async () => {
+  try {
+    const { data } = await axios.get('http://localhost:8080/api/users/current-user');
+    user.value = data;
 
-  methods: {
-    async loadProfile() {
-      try {
-        const res = await axios.get(`http://localhost:8080/api/users/current-user`);
-        this.user = res.data;
-
-        this.edit.username = this.user.username;
-        this.edit.firstName = this.user.firstName;
-        this.edit.lastName = this.user.lastName;
-        this.edit.address = this.user.address;
-      } catch (e) {
-        console.error("Profile load failed", e);
-        alert("User not found");
-      }
-    },
-
-    async loadVideos() {
-      try {
-        // Pozivaš endpoint za videe trenutno ulogovanog korisnika
-        const res = await axios.get(`http://localhost:8080/api/videoPosts/my`);
-        this.videos = res.data;
-      } catch (e) {
-        console.error("Failed to load videos", e);
-      }
-    },
-
-    async saveEdit() {
-      try {
-        await axios.put(`http://localhost:8080/api/users/current-user`, this.edit);
-        this.editing = false;
-        await this.loadProfile();
-        alert("Profile updated!");
-      } catch (e) {
-        alert("Update failed");
-      }
-    },
-    formatDate(date) {
-      return new Date(date).toLocaleString("en-GB", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
-      });
-    },
-
-
-    async deleteVideo(id) {
-      if (!confirm("Are you sure you want to delete this video?")) return;
-
-      try {
-        await axios.delete(`http://localhost:8080/api/videoPosts/${id}`);
-        this.videos = this.videos.filter(v => v.id !== id);
-        alert("Video deleted!");
-      } catch (e) {
-        alert("Failed to delete video");
-        console.error(e);
-      }
-    },
-
-    goToVideo(id) {
-      this.$router.push(`/video/${id}`);
-    },
-
-
+    edit.username = data.username;
+    edit.firstName = data.firstName;
+    edit.lastName = data.lastName;
+    edit.address = data.address;
+  } catch (e) {
+    console.error('Profile load failed', e);
+    alert('User not found');
   }
 };
+
+const loadVideos = async () => {
+  try {
+    const { data } = await axios.get('http://localhost:8080/api/videoPosts/my');
+    videos.value = data;
+  } catch (e) {
+    console.error('Failed to load videos', e);
+  }
+};
+
+const saveEdit = async () => {
+  try {
+    await axios.put('http://localhost:8080/api/users/current-user', edit);
+    editing.value = false;
+    await loadProfile();
+    alert('Profile updated!');
+  } catch (e) {
+    alert('Update failed');
+  }
+};
+
+const deleteVideo = async (id) => {
+  if (!confirm('Are you sure you want to delete this video?')) return;
+
+  try {
+    await axios.delete(`http://localhost:8080/api/videoPosts/${id}`);
+    videos.value = videos.value.filter(v => v.id !== id);
+    alert('Video deleted!');
+  } catch (e) {
+    alert('Failed to delete video');
+    console.error(e);
+  }
+};
+
+const formatDate = (date) => {
+  return new Date(date).toLocaleString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+const goToVideo = (id) => {
+  router.push('/video/${id}');
+};
+
+onMounted(async () => {
+  if (authStore.token) {
+    await loadProfile();
+    await loadVideos();
+  }
+});
 </script>
 
 <style scoped>

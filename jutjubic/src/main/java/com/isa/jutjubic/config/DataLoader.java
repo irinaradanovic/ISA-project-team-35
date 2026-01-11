@@ -71,6 +71,12 @@ public class DataLoader implements CommandLineRunner {
     @Override
     public void run(String... args) {
 
+        // Provera: Ako već imamo korisnike, nemoj raditi ništa
+        if (userRepository.count() > 0) {
+            System.out.println("Podaci već postoje u bazi, preskačem učitavanje.");
+            return;
+        }
+
         User user1 = User.builder()
                 .email("marko@test.com")
                 .username("marko")

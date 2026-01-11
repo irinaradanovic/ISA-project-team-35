@@ -49,9 +49,24 @@ public class VideoPost {
     @Column(nullable = false)
     private boolean deleted = false;
 
+    // Za zakazani prikaz
+    private LocalDateTime scheduledAt = null;
+    private boolean isStreaming = false;
+
+    // Status transcoding-a (da se ne prikazuje dok nije spreman)
+    @Enumerated(EnumType.STRING)
+    private VideoStatus status; // PENDING, PROCESSING, READY, FAILED
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    public enum VideoStatus {
+        PENDING,    // Video je otpremljen, ceka u redu za transcoding
+        PROCESSING, // Jedan od dva potrosaca (consumera) trenutno obradjuje video
+        READY,      // Transcoding zavrsen, video je dostupan za gledanje
+        FAILED      // Doslo je do greske prilikom transcodinga ili uploada
     }
 
 
