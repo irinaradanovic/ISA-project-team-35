@@ -4,7 +4,6 @@
     <header class="home-header">
       <h1 class="logo"></h1>
 
-
       <div class="auth-buttons">
         <router-link to="/login" class="auth-btn">Login</router-link>
         <router-link to="/register" class="auth-btn">Register</router-link>
@@ -26,7 +25,7 @@
           </router-link>
 
           <div class="video-bottom-section">
-            <img class="channel-icon" src="@/assets/logo.png" alt="Channel Icon">
+            <img class="channel-icon" src="@/assets/profile-picture.png" alt="Channel Icon">
             <div class="video-info">
               <router-link :to="`/video/${video.id}`" class="video-title">{{ video.title }}</router-link>
               <a href="#" class="channel-name">{{ video.ownerUsername }}</a>

@@ -4,6 +4,7 @@ import com.isa.jutjubic.dto.VideoPostDto;
 import com.isa.jutjubic.dto.VideoPostUploadDto;
 import com.isa.jutjubic.model.VideoPost;
 import com.isa.jutjubic.repository.VideoPostRepository;
+import com.isa.jutjubic.security.utils.SecurityUtils;
 import com.isa.jutjubic.service.FileStorageService;
 import com.isa.jutjubic.service.VideoPostService;
 import jakarta.annotation.Resource;
@@ -116,7 +117,10 @@ public class VideoPostController {
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to delete video files: " + e.getMessage());
+        }catch (SecurityException e){
+            return ResponseEntity.status(403).body(e.getMessage());
         }
+
     }
 
     @GetMapping
@@ -137,6 +141,14 @@ public class VideoPostController {
            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
        }
     }
+
+    //VIDEI ZA MY PROFILE
+    @GetMapping("/my")
+    public ResponseEntity<List<VideoPostDto>> getMyVideos() {
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(postService.getUsersVideos(userId));
+    }
+
 
 
 }

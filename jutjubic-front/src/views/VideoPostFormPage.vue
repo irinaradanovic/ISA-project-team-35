@@ -1,5 +1,10 @@
 <template>
   <div class="video-form-container">
+    <div v-if="!authStore.token" class="auth-warning">
+      <h2>Please log in</h2>
+      <p>You must be logged in to upload videos to Jutjubić.</p>
+    </div>
+    <template v-else>
     <h2>Create new video post</h2>
     <form @submit.prevent="submitPost" enctype="multipart/form-data">
       <div class="form-group">
@@ -130,6 +135,7 @@
       </button>
 
     </form>
+    </template>
 
     <div v-if="message" :class="{ success: success, error: !success }" class="message">
       {{ message }}
@@ -140,11 +146,13 @@
 <script>
 import axios from 'axios';
 import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
 
 export default {
   setup() {
     const router = useRouter();
-    return { router };
+    const authStore = useAuthStore();
+    return { router, authStore };
   },
   data() {
     return {

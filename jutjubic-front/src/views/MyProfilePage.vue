@@ -1,6 +1,11 @@
 <template>
   <div class="profile-container">
+      <div v-if="!authStore.token" class="auth-warning">
+        <h2>Please log in</h2>
+        <p>You must be logged in to view your profile and videos.</p>
+      </div>
 
+    <template v-else>
     <div class="profile-header">
       <div class="profile-left">
         <img src="@/assets/profile-picture.png" class="profile-img" />
@@ -72,19 +77,23 @@
       </div>
     </div>
 
-
+    </template>
   </div>
 </template>
 
 <script>
 import axios from "axios";
+import { useAuthStore } from '@/stores/auth';
 
 export default {
   name: "MyProfilePage",
+  setup() {
+    const authStore = useAuthStore();
+    return { authStore };
+  },
 
   data() {
     return {
-      userId: 2,   // dok nema logina hardcodovano
       user: null,
       videos: [],
       editing: false,
@@ -98,14 +107,17 @@ export default {
   },
 
   async created() {
-    await this.loadProfile();
-    await this.loadVideos();
+    // Proveri da li postoji token pre nego što pozoveš API
+    if (this.authStore.token) {
+      await this.loadProfile();
+      await this.loadVideos();
+    }
   },
 
   methods: {
     async loadProfile() {
       try {
-        const res = await axios.get(`http://localhost:8080/api/users/${this.userId}`);
+        const res = await axios.get(`http://localhost:8080/api/users/current-user`);
         this.user = res.data;
 
         this.edit.username = this.user.username;
@@ -119,15 +131,24 @@ export default {
     },
 
     async loadVideos() {
-      const res = await axios.get(`http://localhost:8080/api/videoPosts/user/${this.userId}`);
-      this.videos = res.data;
+      try {
+        // Pozivaš endpoint za videe trenutno ulogovanog korisnika
+        const res = await axios.get(`http://localhost:8080/api/videoPosts/my`);
+        this.videos = res.data;
+      } catch (e) {
+        console.error("Failed to load videos", e);
+      }
     },
 
     async saveEdit() {
-      await axios.put(`http://localhost:8080/api/users/${this.userId}`, this.edit);
-      this.editing = false;
-      await this.loadProfile();
-      alert("Profile updated!");
+      try {
+        await axios.put(`http://localhost:8080/api/users/current-user`, this.edit);
+        this.editing = false;
+        await this.loadProfile();
+        alert("Profile updated!");
+      } catch (e) {
+        alert("Update failed");
+      }
     },
     formatDate(date) {
       return new Date(date).toLocaleString("en-GB", {

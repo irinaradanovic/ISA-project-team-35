@@ -9,6 +9,7 @@ import com.isa.jutjubic.repository.VideoPostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -29,40 +30,8 @@ public class DataLoader implements CommandLineRunner {
     private final UserRepository userRepository;
     private final VideoPostRepository videoPostRepository;
     private final CommentRepository commentRepository;
+    private final PasswordEncoder passwordEncoder;
 
-   /* private static final List<String> AVAILABLE_TAGS = List.of(
-            "Music",
-            "Vlog",
-            "Travel",
-            "Food",
-            "Education",
-            "Gaming",
-            "Comedy",
-            "Fitness"
-    );
-
-    private static final List<String> LOCATIONS = List.of(
-            "Beograd",
-            "Novi Sad",
-            "Niš",
-            "Kragujevac",
-            "Subotica",
-            "Zagreb",
-            "Sarajevo",
-            "Split",
-            "Ljubljana"
-    );
-
-    private String randomLocation() {
-        return LOCATIONS.get((int) (Math.random() * LOCATIONS.size()));
-    }
-
-    private String randomTags() {
-        Collections.shuffle(AVAILABLE_TAGS);
-        return AVAILABLE_TAGS.stream()
-                .limit(1 + (int) (Math.random() * 3)) // 1–3 taga
-                .collect(Collectors.joining(","));
-    } */
 
     private String randomTags() {
         List<String> tags = new ArrayList<>(List.of(
@@ -105,7 +74,7 @@ public class DataLoader implements CommandLineRunner {
         User user1 = User.builder()
                 .email("marko@test.com")
                 .username("marko")
-                .passwordHash("password") // kasnije samo ovde treba da stavimo hash funkciju
+                .passwordHash(passwordEncoder.encode("password"))
                 .firstName("Marko")
                 .lastName("Markovic")
                 .address("Novi Sad")
@@ -115,7 +84,7 @@ public class DataLoader implements CommandLineRunner {
         User user2 = User.builder()
                 .email("ana@test.com")
                 .username("ana")
-                .passwordHash("password") // hash funkcija kada se napravi
+                .passwordHash(passwordEncoder.encode("password"))
                 .firstName("Ana")
                 .lastName("Anic")
                 .address("Beograd")
@@ -125,7 +94,7 @@ public class DataLoader implements CommandLineRunner {
         User user3 = User.builder()
                 .email("miki@test.com")
                 .username("miki")
-                .passwordHash("password") // hash funkcija kada se napravi
+                .passwordHash(passwordEncoder.encode("password"))
                 .firstName("Miki")
                 .lastName("Mikic")
                 .address("Adresa")
@@ -135,7 +104,7 @@ public class DataLoader implements CommandLineRunner {
         User user4 = User.builder()
                 .email("jelena@test.com")
                 .username("jelena123")
-                .passwordHash("password") // hash funkcija kada se napravi
+                .passwordHash(passwordEncoder.encode("password"))
                 .firstName("Jelena")
                 .lastName("Jelic")
                 .address("Adresa1")
@@ -145,7 +114,7 @@ public class DataLoader implements CommandLineRunner {
         User user5 = User.builder()
                 .email("milica@test.com")
                 .username("milica20")
-                .passwordHash("password") // hash funkcija kada se napravi
+                .passwordHash(passwordEncoder.encode("password"))
                 .firstName("Milica")
                 .lastName("Milic")
                 .address("Adresa 2")

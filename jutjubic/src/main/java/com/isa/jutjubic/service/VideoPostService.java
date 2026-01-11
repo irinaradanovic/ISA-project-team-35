@@ -6,6 +6,7 @@ import com.isa.jutjubic.model.User;
 import com.isa.jutjubic.model.VideoPost;
 import com.isa.jutjubic.repository.UserRepository;
 import com.isa.jutjubic.repository.VideoPostRepository;
+import com.isa.jutjubic.security.utils.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
@@ -88,7 +89,9 @@ public class VideoPostService {
             thumbnailPath = fileStorageService.saveFile(dto.getThumbnail(), "thumbnails");
             videoPath = fileStorageService.saveFile(dto.getVideo(), "videos");
 
-            User owner = userRepository.getById(1L);   //PRIVREMENO POSTAVLJAMO DA VIDEE POSTAVLJA KORISNIK SA ID-EM 1 DOK SE NE URADI LOG IN
+            Long ownerId = SecurityUtils.getCurrentUserId();  //pronalazimo ulogovanog korisnika
+            User owner = userRepository.findById(ownerId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
 
             VideoPost post = new VideoPost();
             post.setTitle(dto.getTitle());
@@ -115,8 +118,15 @@ public class VideoPostService {
 
     @Transactional
     public void deletePost(Integer id) throws IOException {
+
+        Long userId = SecurityUtils.getCurrentUserId();
+
         VideoPost post = postRepository.findByIdWithOwner(id)
                 .orElseThrow(() -> new NoSuchElementException("VideoPost not found with id " + id));
+
+        if(!post.getOwner().getId().equals(userId)){
+            throw new SecurityException("You cannot delete someone else's video!");
+        }
         post.setDeleted(true);
 
         if (post.getThumbnailPath() != null) {

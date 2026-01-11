@@ -6,6 +6,7 @@ import com.isa.jutjubic.model.VideoPost;
 import com.isa.jutjubic.repository.LikeRepository;
 import com.isa.jutjubic.repository.UserRepository;
 import com.isa.jutjubic.repository.VideoPostRepository;
+import com.isa.jutjubic.security.utils.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -24,9 +25,8 @@ public class LikeService {
     @Autowired
     private UserRepository userRepository;
 
-    // PRIVREMENO - fiksni korisnik dok nema login
     private User getCurrentUser() {
-        return userRepository.findById(1L).orElseThrow();
+        return userRepository.findById(SecurityUtils.getCurrentUserId()).orElseThrow();
     }
 
     @Transactional
