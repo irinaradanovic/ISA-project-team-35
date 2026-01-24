@@ -116,12 +116,13 @@
         <ul v-if="filteredLocations.length" class="location-list">
           <li
               v-for="loc in filteredLocations"
-              :key="loc"
+              :key="loc.city + loc.country"
               @click="selectLocation(loc)"
           >
-            {{ loc }}
+            {{ loc.city }}, {{ loc.country }}
           </li>
         </ul>
+
       </div>
 
       <!-- ogranicava korisnika da mora da unese ova polja-->
@@ -147,6 +148,8 @@
 import axios from 'axios';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import cities from '@/assets/cities.json';
+
 
 export default {
   setup() {
@@ -176,18 +179,9 @@ export default {
       ],
       selectedTags: [],
       locationInput: '',
-      locations: [
-        'Beograd',
-        'Novi Sad',
-        'Niš',
-        'Kragujevac',
-        'Subotica',
-        'Zagreb',
-        'Sarajevo',
-        'Split',
-        'Ljubljana'
-      ],
+      selectedLocation: null,
       filteredLocations: [],
+      cities: cities,
       thumbnailPreview: null,
       videoPreview: null,
 
@@ -272,14 +266,23 @@ export default {
       }
     },
     filterLocations() {
-      const input = this.locationInput.toLowerCase();
-      this.filteredLocations = this.locations.filter(loc =>
-          loc.toLowerCase().startsWith(input)
+      const input = this.locationInput.trim().toLowerCase();
+
+      // Ako je input prazan → prikaži sve
+      if (!input) {
+        this.filteredLocations = [...this.cities];
+        return;
+      }
+
+      this.filteredLocations = this.cities.filter(c =>
+          c.city.toLowerCase().startsWith(input) ||
+          c.country.toLowerCase().startsWith(input)
       );
     },
 
-    selectLocation(loc) {
-      this.locationInput = loc;
+    selectLocation(cityObj) {
+      this.selectedLocation = cityObj;
+      this.locationInput = `${cityObj.city}, ${cityObj.country}`;
       this.filteredLocations = [];
     },
 
@@ -321,12 +324,22 @@ export default {
         return;
       }
 
+      if (this.locationInput && !this.selectedLocation) {
+        this.message = "Please select a location from the list.";
+        this.success = false;
+        return;
+      }
 
       const formData = new FormData();
       formData.append('title', this.title);
       formData.append('description', this.description);
       formData.append('tags', this.selectedTags.join(','));
-      formData.append('location', this.locationInput);
+      if (this.selectedLocation) {
+        formData.append('city', this.selectedLocation.city);
+        formData.append('country', this.selectedLocation.country);
+        formData.append('latitude', this.selectedLocation.lat);
+        formData.append('longitude', this.selectedLocation.lng);
+      }
       formData.append('thumbnail', this.thumbnail);
       formData.append('video', this.video);
 
@@ -446,15 +459,19 @@ export default {
 
 
 .location-list {
+  position: static;
+  z-index: 1000;
+  width: 100%;
   list-style: none;
   padding: 0;
-  margin: 4px 0 0;
+  margin-top: 4px;
   border: 1px solid #ccc;
-  border-radius: 4px;
+  border-radius: 6px;
   background: white;
-  max-height: 150px;
+  max-height: 180px;
   overflow-y: auto;
 }
+
 
 .location-list li {
   padding: 8px;

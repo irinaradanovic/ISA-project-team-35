@@ -1,6 +1,7 @@
 package com.isa.jutjubic.config;
 
 import com.isa.jutjubic.model.Comment;
+import com.isa.jutjubic.model.GeoLocation;
 import com.isa.jutjubic.model.User;
 import com.isa.jutjubic.model.VideoPost;
 import com.isa.jutjubic.repository.CommentRepository;
@@ -50,22 +51,78 @@ public class DataLoader implements CommandLineRunner {
         return String.join(",", tags.subList(0, 2));
     }
 
-    private String randomLocation() {
-        List<String> locations = List.of(
-                "Beograd",
-                "Novi Sad",
-                "Niš",
-                "Kragujevac",
-                "Subotica",
-                "Zagreb",
-                "Sarajevo",
-                "Split",
-                "Ljubljana"
+    private GeoLocation randomGeoLocation() {
+        List<GeoLocation> locations = List.of(
+                // Serbia
+                new GeoLocation("Belgrade", "Serbia", 44.7866, 20.4489),
+                new GeoLocation("Novi Sad", "Serbia", 45.2671, 19.8335),
+                new GeoLocation("Niš", "Serbia", 43.3209, 21.8958),
+                new GeoLocation("Kragujevac", "Serbia", 44.0128, 20.9114),
+                new GeoLocation("Subotica", "Serbia", 46.1006, 19.6656),
+
+                // Croatia
+                new GeoLocation("Zagreb", "Croatia", 45.8150, 15.9819),
+                new GeoLocation("Split", "Croatia", 43.5081, 16.4402),
+                new GeoLocation("Rijeka", "Croatia", 45.3271, 14.4422),
+                new GeoLocation("Osijek", "Croatia", 45.5540, 18.6955),
+
+                // Bosnia and Herzegovina
+                new GeoLocation("Sarajevo", "Bosnia and Herzegovina", 43.8563, 18.4131),
+                new GeoLocation("Banja Luka", "Bosnia and Herzegovina", 44.7722, 17.1910),
+                new GeoLocation("Mostar", "Bosnia and Herzegovina", 43.3438, 17.8078),
+
+                // Montenegro
+                new GeoLocation("Podgorica", "Montenegro", 42.4304, 19.2594),
+                new GeoLocation("Nikšić", "Montenegro", 42.7731, 18.9445),
+
+                // North Macedonia
+                new GeoLocation("Skopje", "North Macedonia", 41.9981, 21.4254),
+                new GeoLocation("Bitola", "North Macedonia", 41.0314, 21.3347),
+
+                // Slovenia
+                new GeoLocation("Ljubljana", "Slovenia", 46.0569, 14.5058),
+                new GeoLocation("Maribor", "Slovenia", 46.5547, 15.6459),
+
+                // Central Europe
+                new GeoLocation("Budapest", "Hungary", 47.4979, 19.0402),
+                new GeoLocation("Vienna", "Austria", 48.2082, 16.3738),
+                new GeoLocation("Prague", "Czech Republic", 50.0755, 14.4378),
+                new GeoLocation("Bratislava", "Slovakia", 48.1486, 17.1077)
         );
 
         return locations.get(new Random().nextInt(locations.size()));
     }
 
+    private LocalDateTime randomCreatedAt() {
+        Random random = new Random();
+        double rand = random.nextDouble();
+
+        int daysBack;
+        if (rand < 0.30) {
+            // 30% - poslednja 2 nedelje
+            daysBack = random.nextInt(14);
+        } else if (rand < 0.55) {
+            // 25% - poslednji mesec (14-30 dana)
+            daysBack = 14 + random.nextInt(17);
+        } else if (rand < 0.75) {
+            // 20% - poslednjih 3 meseca (31-90 dana)
+            daysBack = 31 + random.nextInt(60);
+        } else if (rand < 0.90) {
+            // 15% - poslednjih 6 meseci (91-180 dana)
+            daysBack = 91 + random.nextInt(90);
+        } else {
+            // 10% - stariji videi (181-730 dana)
+            daysBack = 181 + random.nextInt(550);
+        }
+
+        int hours = random.nextInt(24);
+        int minutes = random.nextInt(60);
+
+        return LocalDateTime.now()
+                .minusDays(daysBack)
+                .minusHours(hours)
+                .minusMinutes(minutes);
+    }
 
 
     @Override
@@ -141,8 +198,8 @@ public class DataLoader implements CommandLineRunner {
                     .tags(randomTags())
                     .thumbnailPath("uploads/thumbnails/" + (i%6+1) + ".jpg")
                     .videoPath("uploads/videos/" + (i%6+1) + ".mp4")
-                    .createdAt(LocalDateTime.now())
-                    .location(randomLocation())
+                    .createdAt(randomCreatedAt())
+                    .location(randomGeoLocation())
                     .owner(owners.get(i%5))
                     .likeCount(random.nextInt(10))
                     .commentCount(3)  //za pocetak 3 komentara

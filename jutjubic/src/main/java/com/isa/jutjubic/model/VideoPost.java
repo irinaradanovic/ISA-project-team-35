@@ -33,7 +33,8 @@ public class VideoPost {
     private String videoPath;
     @Column(name = "created_at")
     private LocalDateTime createdAt;
-    private String location;
+    @Embedded
+    private GeoLocation location;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -59,7 +60,9 @@ public class VideoPost {
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        if(this.createdAt == null){
+            this.createdAt = LocalDateTime.now();
+        }
     }
 
     public enum VideoStatus {
