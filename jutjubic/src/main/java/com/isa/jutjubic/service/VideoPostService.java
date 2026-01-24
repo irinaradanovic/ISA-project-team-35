@@ -2,6 +2,7 @@ package com.isa.jutjubic.service;
 
 import com.isa.jutjubic.dto.VideoPostDto;
 import com.isa.jutjubic.dto.VideoPostUploadDto;
+import com.isa.jutjubic.model.GeoLocation;
 import com.isa.jutjubic.model.User;
 import com.isa.jutjubic.model.VideoPost;
 import com.isa.jutjubic.repository.UserRepository;
@@ -59,7 +60,12 @@ public class VideoPostService {
         dto.setThumbnailPath(post.getThumbnailPath());
         dto.setVideoPath(post.getVideoPath());
         dto.setCreatedAt(post.getCreatedAt());
-        dto.setLocation(post.getLocation());
+        if (post.getLocation() != null) {
+            dto.setCity(post.getLocation().getCity());
+            dto.setCountry(post.getLocation().getCountry());
+            dto.setLatitude(post.getLocation().getLatitude());
+            dto.setLongitude(post.getLocation().getLongitude());
+        }
         dto.setOwnerUsername(post.getOwner().getUsername());
         dto.setLikeCount(post.getLikeCount());
         dto.setCommentCount(post.getCommentCount());
@@ -83,12 +89,26 @@ public class VideoPostService {
             throw new IllegalArgumentException("At least one tag is required");
         }
 
+        long startTime = System.currentTimeMillis();
+        long timeoutMillis = 10_000; // 10 sekundi
+
         String videoPath = null;
         String thumbnailPath = null;
 
         try {
             thumbnailPath = fileStorageService.saveFile(dto.getThumbnail(), "thumbnails");
+
+            // proveri da li je proslo više od timeout-a
+            if (System.currentTimeMillis() - startTime > timeoutMillis) {
+                throw new IOException("Upload timeout - thumbnail upload took too long");
+            }
+
             videoPath = fileStorageService.saveFile(dto.getVideo(), "videos");
+
+            // proveri ponovo
+            if (System.currentTimeMillis() - startTime > timeoutMillis) {
+                throw new IOException("Upload timeout - video upload took too long");
+            }
 
             Long ownerId = SecurityUtils.getCurrentUserId();  //pronalazimo ulogovanog korisnika
             User owner = userRepository.findById(ownerId)
@@ -101,11 +121,20 @@ public class VideoPostService {
             post.setThumbnailPath(thumbnailPath);
             post.setVideoPath(videoPath);
             post.setCreatedAt(LocalDateTime.now());
-            post.setLocation(dto.getLocation());
             post.setOwner(owner);
+            GeoLocation geoLocation = null;
 
+            if (dto.getCity() != null && !dto.getCity().isBlank()) {
+                geoLocation = new GeoLocation(
+                        dto.getCity(),
+                        dto.getCountry(),
+                        dto.getLatitude(),
+                        dto.getLongitude()
+                );
+            }
 
-            //return postRepository.save(post);
+            post.setLocation(geoLocation);
+
             postRepository.save(post);
             return mapToDto(post);
 

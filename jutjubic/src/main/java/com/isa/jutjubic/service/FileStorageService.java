@@ -27,18 +27,14 @@ public class FileStorageService {
     private CacheManager cacheManager;
 
     public String saveFile(MultipartFile file, String subFolder) throws IOException {
-        //  simulacija sporog uploada
-      /* long start = System.currentTimeMillis();
-        try {
-            System.out.println("Simulating slow upload...");
-            Thread.sleep(7000); // 7 sekundi
-        } catch (InterruptedException ignored) {}
-
-        long duration = System.currentTimeMillis() - start;
-
-       if (duration > 6000) {
-            throw new IOException("Upload took too long");
-        } */
+        //  simulacija sporog uploada - samo za testiranje
+      /*  try {
+            System.out.println("Simulating slow upload for: " + file.getOriginalFilename());
+            Thread.sleep(7000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Upload interrupted");
+        }   */
 
         Path folderPath = rootUploadDir.resolve(subFolder);
 

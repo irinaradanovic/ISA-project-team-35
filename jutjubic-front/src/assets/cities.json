@@ -1,0 +1,48 @@
+[
+  { "city": "Belgrade", "country": "Serbia", "lat": 44.7866, "lng": 20.4489 },
+  { "city": "Novi Sad", "country": "Serbia", "lat": 45.2671, "lng": 19.8335 },
+  { "city": "Niš", "country": "Serbia", "lat": 43.3209, "lng": 21.8958 },
+  { "city": "Kragujevac", "country": "Serbia", "lat": 44.0128, "lng": 20.9114 },
+  { "city": "Subotica", "country": "Serbia", "lat": 46.1006, "lng": 19.6656 },
+
+  { "city": "Zagreb", "country": "Croatia", "lat": 45.8150, "lng": 15.9819 },
+  { "city": "Split", "country": "Croatia", "lat": 43.5081, "lng": 16.4402 },
+  { "city": "Rijeka", "country": "Croatia", "lat": 45.3271, "lng": 14.4422 },
+  { "city": "Osijek", "country": "Croatia", "lat": 45.5540, "lng": 18.6955 },
+
+  { "city": "Sarajevo", "country": "Bosnia and Herzegovina", "lat": 43.8563, "lng": 18.4131 },
+  { "city": "Banja Luka", "country": "Bosnia and Herzegovina", "lat": 44.7722, "lng": 17.1910 },
+  { "city": "Mostar", "country": "Bosnia and Herzegovina", "lat": 43.3438, "lng": 17.8078 },
+
+  { "city": "Podgorica", "country": "Montenegro", "lat": 42.4304, "lng": 19.2594 },
+  { "city": "Nikšić", "country": "Montenegro", "lat": 42.7731, "lng": 18.9445 },
+
+  { "city": "Skopje", "country": "North Macedonia", "lat": 41.9981, "lng": 21.4254 },
+  { "city": "Bitola", "country": "North Macedonia", "lat": 41.0314, "lng": 21.3347 },
+
+  { "city": "Ljubljana", "country": "Slovenia", "lat": 46.0569, "lng": 14.5058 },
+  { "city": "Maribor", "country": "Slovenia", "lat": 46.5547, "lng": 15.6459 },
+
+  { "city": "Budapest", "country": "Hungary", "lat": 47.4979, "lng": 19.0402 },
+  { "city": "Vienna", "country": "Austria", "lat": 48.2082, "lng": 16.3738 },
+  { "city": "Prague", "country": "Czech Republic", "lat": 50.0755, "lng": 14.4378 },
+  { "city": "Bratislava", "country": "Slovakia", "lat": 48.1486, "lng": 17.1077 },
+
+  { "city": "Munich", "country": "Germany", "lat": 48.1351, "lng": 11.5820 },
+  { "city": "Berlin", "country": "Germany", "lat": 52.5200, "lng": 13.4050 },
+  { "city": "Paris", "country": "France", "lat": 48.8566, "lng": 2.3522 },
+  { "city": "Rome", "country": "Italy", "lat": 41.9028, "lng": 12.4964 },
+  { "city": "Milan", "country": "Italy", "lat": 45.4642, "lng": 9.1900 },
+
+  { "city": "Madrid", "country": "Spain", "lat": 40.4168, "lng": -3.7038 },
+  { "city": "Barcelona", "country": "Spain", "lat": 41.3851, "lng": 2.1734 },
+  { "city": "London", "country": "United Kingdom", "lat": 51.5074, "lng": -0.1278 },
+
+  { "city": "New York", "country": "United States", "lat": 40.7128, "lng": -74.0060 },
+  { "city": "Los Angeles", "country": "United States", "lat": 34.0522, "lng": -118.2437 },
+  { "city": "Toronto", "country": "Canada", "lat": 43.6532, "lng": -79.3832 },
+
+  { "city": "Tokyo", "country": "Japan", "lat": 35.6895, "lng": 139.6917 },
+  { "city": "Seoul", "country": "South Korea", "lat": 37.5665, "lng": 126.9780 },
+  { "city": "Sydney", "country": "Australia", "lat": -33.8688, "lng": 151.2093 }
+]
