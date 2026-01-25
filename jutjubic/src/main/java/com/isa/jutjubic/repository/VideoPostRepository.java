@@ -42,6 +42,7 @@ public interface VideoPostRepository extends JpaRepository<VideoPost, Integer> {
 
 
     //za mapu
+    // OVO BI TREBALO DA VRACA SAMO VIDEE KOJI SE NALAZE IZMEDJU ODREDJENIH KOORDINATA, NISAM SIGURNA DA LI RADI SKROZ
     @Query("""
         SELECT v FROM VideoPost v
         JOIN FETCH v.owner

@@ -15,6 +15,7 @@ public class MapController {
     private MapService mapService;
 
     // Filtracija po vremenu
+    // VEROVATNO TREBA DODATI ZOOM
     @GetMapping("/videos")
     public ResponseEntity<?> getVideosForMap(
             @RequestParam double minLat,

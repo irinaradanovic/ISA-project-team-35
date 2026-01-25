@@ -16,8 +16,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,13 +41,8 @@ public class VideoPostService {
     @Autowired
     private CacheManager cacheManager;
 
-    public List<VideoPostDto> getAllPosts() {
-        return postRepository.findAll()
-                .stream()
-                .map(this::mapToDto)
-                .collect(Collectors.toList());
-    }
-
+    @Autowired
+    private MapTileService mapTileService;
 
     public VideoPostDto mapToDto(VideoPost post) {
         VideoPostDto dto = new VideoPostDto();
@@ -136,6 +129,12 @@ public class VideoPostService {
             post.setLocation(geoLocation);
 
             postRepository.save(post);
+
+            // [S2] dodato za mapu 3.18:
+            if (post.getLocation() != null) {
+                mapTileService.updateTileForNewVideo(post);
+            }
+
             return mapToDto(post);
 
         } catch (IOException e) {
@@ -197,7 +196,6 @@ public class VideoPostService {
                 .map(this::mapToDto);
     }
 
-   // @Transactional
     public void incrementViews(Integer videoId) {
         int updated = postRepository.incrementViews(videoId);
         if (updated == 0) {
