@@ -5,6 +5,8 @@ import router from './router/index.js'
 import axios from 'axios'
 import './assets/global.css'
 
+import 'leaflet/dist/leaflet.css' // za prikaz mape
+
 // Podesimo osnovni URL za backend
 axios.defaults.baseURL = 'http://localhost:8080/api'
 
