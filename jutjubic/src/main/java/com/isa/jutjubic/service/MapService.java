@@ -1,10 +1,14 @@
 package com.isa.jutjubic.service;
+import com.isa.jutjubic.dto.TileVideoDto;
 import com.isa.jutjubic.dto.VideoPostDto;
 import com.isa.jutjubic.model.VideoPost;
 import com.isa.jutjubic.repository.VideoPostRepository;
+import com.isa.jutjubic.security.utils.TileBounds;
+import com.isa.jutjubic.security.utils.TileUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import com.isa.jutjubic.dto.TimeRange;
 
@@ -12,6 +16,35 @@ import com.isa.jutjubic.dto.TimeRange;
 public class MapService {
     @Autowired
     private VideoPostRepository videoPostRepository;
+
+    public List<TileVideoDto> getVideosForTiles(List<String> tileIds) {
+        List<TileVideoDto> result = new ArrayList<>();
+
+        for (String tileId : tileIds) {
+            TileBounds bounds = TileUtils.tileToBounds(tileId);
+
+            // fetch iz repozitorijuma po bounding box-u
+            List<VideoPostDto> videos = videoPostRepository
+                    .findForMap(
+                            resolveFrom(TimeRange.ALL),
+                            bounds.getMinLat(),
+                            bounds.getMaxLat(),
+                            bounds.getMinLng(),
+                            bounds.getMaxLng()
+                    ).stream()
+                    .map(this::mapToDto)
+                    .toList();
+
+            result.add(new TileVideoDto(tileId, videos));
+        }
+        return result;
+    }
+
+
+
+
+
+
 
     public LocalDateTime resolveFrom(TimeRange range) {
         return switch (range) {

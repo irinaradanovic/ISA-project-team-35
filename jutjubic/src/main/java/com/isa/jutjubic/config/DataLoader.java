@@ -7,11 +7,14 @@ import com.isa.jutjubic.model.VideoPost;
 import com.isa.jutjubic.repository.CommentRepository;
 import com.isa.jutjubic.repository.UserRepository;
 import com.isa.jutjubic.repository.VideoPostRepository;
+import com.isa.jutjubic.service.MapTileService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -32,7 +35,7 @@ public class DataLoader implements CommandLineRunner {
     private final VideoPostRepository videoPostRepository;
     private final CommentRepository commentRepository;
     private final PasswordEncoder passwordEncoder;
-
+    private final MapTileService mapTileService;
 
     private String randomTags() {
         List<String> tags = new ArrayList<>(List.of(
@@ -87,11 +90,56 @@ public class DataLoader implements CommandLineRunner {
                 new GeoLocation("Budapest", "Hungary", 47.4979, 19.0402),
                 new GeoLocation("Vienna", "Austria", 48.2082, 16.3738),
                 new GeoLocation("Prague", "Czech Republic", 50.0755, 14.4378),
-                new GeoLocation("Bratislava", "Slovakia", 48.1486, 17.1077)
+                new GeoLocation("Bratislava", "Slovakia", 48.1486, 17.1077),
+
+                new GeoLocation("Valjevo", "Serbia", 44.2750, 19.8980),
+                new GeoLocation("Brangović", "Serbia", 44.2201, 19.8704),
+
+
+                new GeoLocation("Čačak", "Serbia", 43.8914, 20.3497),
+                new GeoLocation("Užice", "Serbia", 43.8555, 19.8430),
+
+                new GeoLocation("Sofia", "Bulgaria", 42.6977, 23.3219),
+                new GeoLocation("Plovdiv", "Bulgaria", 42.1354, 24.7453),
+
+                new GeoLocation("Bucharest", "Romania", 44.4268, 26.1025),
+                new GeoLocation("Cluj-Napoca", "Romania", 46.7712, 23.6236),
+
+                new GeoLocation("Munich", "Germany", 48.1351, 11.5820),
+                new GeoLocation("Hamburg", "Germany", 53.5511, 9.9937),
+
+                new GeoLocation("Milan", "Italy", 45.4642, 9.1900),
+                new GeoLocation("Barcelona", "Spain", 41.3851, 2.1734),
+                new GeoLocation("Paris", "France", 48.8566, 2.3522),
+                new GeoLocation("Lyon", "France", 45.7640, 4.8357),
+
+                new GeoLocation("Amsterdam", "Netherlands", 52.3676, 4.9041),
+                new GeoLocation("Rotterdam", "Netherlands", 51.9244, 4.4777),
+
+                new GeoLocation("Brussels", "Belgium", 50.8503, 4.3517),
+
+                new GeoLocation("Copenhagen", "Denmark", 55.6761, 12.5683),
+
+                new GeoLocation("Stockholm", "Sweden", 59.3293, 18.0686),
+                new GeoLocation("Oslo", "Norway", 59.9139, 10.7522),
+
+                new GeoLocation("Helsinki", "Finland", 60.1699, 24.9384),
+
+                new GeoLocation("Warsaw", "Poland", 52.2297, 21.0122),
+                new GeoLocation("Krakow", "Poland", 50.0647, 19.9450),
+
+                new GeoLocation("Lisbon", "Portugal", 38.7223, -9.1393),
+
+                new GeoLocation("Athens", "Greece", 37.9838, 23.7275),
+
+                new GeoLocation("Zurich", "Switzerland", 47.3769, 8.5417)
+
+
         );
 
         return locations.get(new Random().nextInt(locations.size()));
     }
+
 
     private LocalDateTime randomCreatedAt() {
         Random random = new Random();
@@ -126,6 +174,7 @@ public class DataLoader implements CommandLineRunner {
 
 
     @Override
+    @Transactional
     public void run(String... args) {
 
         // Provera: Ako već imamo korisnike, nemoj raditi ništa
@@ -187,10 +236,11 @@ public class DataLoader implements CommandLineRunner {
         userRepository.saveAll(List.of(user1, user2 , user3, user4, user5));
 
         List<User> owners = List.of(user1, user2, user3, user4, user5);
-        int videoCount = 100;
+
+        int videoCount = 5000;
         Random random = new Random();
 
-        for (int i = 1; i <= videoCount; i++) {
+        /*for (int i = 1; i <= videoCount; i++) {
 
             VideoPost videoPost = VideoPost.builder()
                     .title("VideoPost broj " + i)
@@ -217,8 +267,60 @@ public class DataLoader implements CommandLineRunner {
                         .build();
                 commentRepository.save(comment);
             }
+
+        }*/
+        List<VideoPost> videoBatch = new ArrayList<>();
+        List<Comment> commentBatch = new ArrayList<>();
+
+        for (int i = 1; i <= videoCount; i++) {
+            GeoLocation loc = randomGeoLocation();
+            User owner = owners.get(i % owners.size());
+
+            VideoPost video = VideoPost.builder()
+                    .title("Video " + i)
+                    .description("Test video " + i)
+                    .tags(randomTags())
+                    .thumbnailPath("uploads/thumbnails/" + (i % 6 + 1) + ".jpg")
+                    .videoPath("uploads/videos/" + (i % 6 + 1) + ".mp4")
+                    .createdAt(randomCreatedAt())
+                    .location(loc)
+                    .owner(owner)
+                    .likeCount(random.nextInt(100))
+                    .commentCount(3)
+                    .viewCount(random.nextInt(1000))
+                    .build();
+
+            videoBatch.add(video);
+
+            for (int j = 1; j <= 3; j++) {
+                Comment comment = Comment.builder()
+                        .content("Komentar " + j + " na video " + i)
+                        .author(owners.get((i + j) % owners.size()))
+                        .videoPost(video)
+                        .build();
+                commentBatch.add(comment);
+            }
+
+            // Batch save na svakih 500 videa
+            if (i % 500 == 0) {
+                videoPostRepository.saveAll(videoBatch);
+                commentRepository.saveAll(commentBatch);
+                videoBatch.clear();
+                commentBatch.clear();
+                System.out.println(i + " videa ubaceno...");
+            }
         }
 
-        System.out.println("Local test data loaded");
+        // ostatak
+        if (!videoBatch.isEmpty()) {
+            videoPostRepository.saveAll(videoBatch);
+            commentRepository.saveAll(commentBatch);
+        }
+
+        System.out.println("Svi test video postovi ubaceni.");
+
+        //Rebuild tile-ova JEDNOM
+        mapTileService.rebuildAllTiles();
+        System.out.println("Map tiles rebuilt for test data.");
     }
 }
