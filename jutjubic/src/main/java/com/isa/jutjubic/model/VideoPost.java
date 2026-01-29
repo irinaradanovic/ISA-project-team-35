@@ -8,16 +8,17 @@ import java.time.LocalDateTime;
 import java.util.Date;
 import org.hibernate.annotations.Where;
 
-@AllArgsConstructor
-@NoArgsConstructor
-@Getter
-@Setter
-@ToString
+@AllArgsConstructor @NoArgsConstructor
+@Getter @Setter  @ToString
 @Entity
 @Builder
-@Cacheable
-@Cache(usage = org.hibernate.annotations.CacheConcurrencyStrategy.READ_WRITE)
+@Cacheable @Cache(usage = org.hibernate.annotations.CacheConcurrencyStrategy.READ_WRITE)
 @Where(clause = "deleted = false") //Hibernate ignorise sve sto je obrisano
+
+@Table(name = "video_post", indexes = {
+        @Index(name = "idx_location", columnList = "latitude, longitude"),
+        @Index(name = "idx_created", columnList = "created_at")
+})
 public class VideoPost {
 
     @Id

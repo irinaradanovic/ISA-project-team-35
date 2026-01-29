@@ -8,29 +8,6 @@ import RegisterView from '@/views/RegisterView.vue'
 import ProfilePage from '@/views/ProfilePage.vue'
 
 const router = createRouter({
-  /*history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [
-      {
-      path: '/create-post',
-      name: 'VideoPostFormPage',
-      component: VideoPostFormPage,
-      },
-      {
-          path: '/video/:id',
-          name: 'VideoPlayerPage',
-          component: VideoPlayerPage
-      },
-      {
-        path: '/',
-        name: 'HomePage',
-        component: HomePage
-      },
-      {
-          path: '/my-profile',
-          name: 'MyProfilePage',
-          component: MyProfilePage
-      }
-  ],*/
     history: createWebHistory(import.meta.env.BASE_URL),
     routes: [
         {
