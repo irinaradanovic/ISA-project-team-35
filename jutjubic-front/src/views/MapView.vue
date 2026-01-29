@@ -1,5 +1,13 @@
+
 <template>
   <div id="map-container">
+    <div class="filter-overlay">
+      <select v-model="selectedTimeRange" @change="onFilterChange" class="time-select">
+        <option value="ALL">All time</option>
+        <option value="LAST_30_DAYS">Last 30 days</option>
+        <option value="THIS_YEAR">This year</option>
+      </select>
+    </div>
     <div id="map"></div>
   </div>
 </template>
@@ -10,15 +18,18 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster";
-import {ref, onMounted} from "vue";
-import {fetchVideosForMap} from "@/api/mapApi"; // POST /videos/tiles
-import {debounce} from "lodash";
-import {useRouter} from "vue-router";
+import { ref, onMounted } from "vue";
+import { fetchVideosForMap } from "@/api/mapApi";
+import { debounce } from "lodash";
+import { useRouter } from "vue-router";
 
 // -------------------- STATE --------------------
 const map = ref(null);
 const markerCluster = ref(null);
 const router = useRouter();
+
+// S2: Stanje za vremenski filter, default all
+const selectedTimeRange = ref("ALL");
 
 // tileId -> VideoPostDto[]
 const tileCache = ref(new Map());
@@ -52,12 +63,25 @@ function getVisibleTileIds(bounds, zoom) {
   return tiles;
 }
 
+// -------------------- S2 : FILTER CHANGE --------------------
+function onFilterChange() {
+  // kada se promeni filter za vreme, kes vise ne vazi
+  tileCache.value.clear();
+  if (markerCluster.value) {
+    markerCluster.value.clearLayers();
+  }
+  loadTilesForViewport();
+}
+
 // -------------------- MAP INIT --------------------
 onMounted(() => {
   map.value = L.map("map", {
-    center: [48, 19],
+    center: [44.8, 20.4], // Centrirano na Balkan/Evropu
     zoom: ZOOM_LEVEL
   });
+
+  // Sprečava scroll kod klika na kontrole
+  L.DomEvent.disableClickPropagation(document.querySelector('.leaflet-control-zoom'));
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: "© OpenStreetMap"
@@ -78,6 +102,7 @@ function loadTilesForViewport() {
   const zoom = map.value.getZoom();
   const visibleTiles = getVisibleTileIds(bounds, zoom);
 
+  // Proveravamo kes (koji je prazan ako je filter tek promenjen)
   const missingTiles = visibleTiles.filter(tileId => !tileCache.value.has(tileId));
 
   if (missingTiles.length === 0) {
@@ -85,7 +110,11 @@ function loadTilesForViewport() {
     return;
   }
 
-  fetchVideosForMap({tiles: missingTiles})
+  // S2: Saljemo i listu tile-ova i timeRange backendu
+  fetchVideosForMap({
+    tiles: missingTiles,
+    timeRange: selectedTimeRange.value
+  })
       .then(res => {
         res.data.forEach(tile => {
           tileCache.value.set(tile.tileId, tile.videos);
@@ -111,16 +140,15 @@ function renderFromCache(tileIds) {
 
       const marker = L.marker([video.latitude, video.longitude]);
 
-      // Bind popup sa dugmetom/linkom
       marker.bindPopup(`
-        <div>
-          <b>${video.title}</b><br>
-          ${video.description || ""}<br>
-          <button id="go-to-video-${video.id}" style="margin-top:5px; cursor:pointer;">Pogledaj video</button>
+        <div style="min-width: 150px;">
+          <img src="http://localhost:8080/${video.thumbnailPath}" style="width:100%; border-radius:4px;"/>
+          <br><b>${video.title}</b><br>
+          <small>${new Date(video.createdAt).toLocaleDateString()}</small><br>
+          <button id="go-to-video-${video.id}" style="margin-top:10px; width:100%; cursor:pointer; background:#f00; color:#fff; border:none; padding:5px; border-radius:4px;">Gledaj</button>
         </div>
       `);
 
-      // Dodaj listener kada se popup otvori
       marker.on("popupopen", () => {
         const btn = document.getElementById(`go-to-video-${video.id}`);
         if (btn) {
@@ -137,13 +165,41 @@ function renderFromCache(tileIds) {
 </script>
 
 <style scoped>
+
+/* Sprečava skakanje stranice kod zumiranja */
+#map-container .leaflet-control-zoom-in,
+#map-container .leaflet-control-zoom-out {
+  text-decoration: none;
+}
+
 #map-container {
   width: 100%;
   height: 100vh;
+  position: relative;
 }
 
 #map {
   width: 100%;
   height: 100%;
+}
+
+/* Stil za filter iznad mape */
+.filter-overlay {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: white;
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.time-select {
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-weight: bold;
+  outline: none;
 }
 </style>

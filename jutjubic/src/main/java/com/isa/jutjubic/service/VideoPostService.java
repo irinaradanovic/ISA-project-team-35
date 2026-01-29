@@ -156,6 +156,11 @@ public class VideoPostService {
         if(!post.getOwner().getId().equals(userId)){
             throw new SecurityException("You cannot delete someone else's video!");
         }
+
+        // dodato: Smanjujemo brojace na mapi pre nego što obelezimo video kao obrisan
+        if (post.getLocation() != null) {
+            mapTileService.updateTileForDeletedVideo(post);
+        }
         post.setDeleted(true);
 
         if (post.getThumbnailPath() != null) {

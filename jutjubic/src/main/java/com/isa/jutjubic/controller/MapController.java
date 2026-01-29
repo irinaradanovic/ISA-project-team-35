@@ -31,7 +31,7 @@ public class MapController {
             return ResponseEntity.badRequest().build();
         }
 
-        List<TileVideoDto> videosByTile = mapService.getVideosForTiles(request.getTiles());
+        List<TileVideoDto> videosByTile = mapService.getVideosForTiles(request.getTiles(), request.getTimeRange());
         return ResponseEntity.ok(videosByTile);
     }
 

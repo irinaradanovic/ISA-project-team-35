@@ -1,7 +1,9 @@
 package com.isa.jutjubic.service;
 import com.isa.jutjubic.dto.TileVideoDto;
 import com.isa.jutjubic.dto.VideoPostDto;
+import com.isa.jutjubic.model.MapTile;
 import com.isa.jutjubic.model.VideoPost;
+import com.isa.jutjubic.repository.MapTileRepository;
 import com.isa.jutjubic.repository.VideoPostRepository;
 import com.isa.jutjubic.security.utils.TileBounds;
 import com.isa.jutjubic.security.utils.TileUtils;
@@ -17,33 +19,46 @@ public class MapService {
     @Autowired
     private VideoPostRepository videoPostRepository;
 
-    public List<TileVideoDto> getVideosForTiles(List<String> tileIds) {
+    @Autowired
+    private MapTileRepository mapTileRepository;
+
+
+    public List<TileVideoDto> getVideosForTiles(List<String> tileIds, String timeRangeStr) {
+        TimeRange range = TimeRange.valueOf(timeRangeStr);
+        List<String> dbIds = tileIds.stream().map(id -> id + "_" + range.name()).toList();
+
+        // Povuci SVE kesirane podatke odjednom (Batch)
+        List<MapTile> cachedTiles = mapTileRepository.findAllById(dbIds);
         List<TileVideoDto> result = new ArrayList<>();
+        LocalDateTime fromDate = resolveFrom(range);
 
         for (String tileId : tileIds) {
-            TileBounds bounds = TileUtils.tileToBounds(tileId);
+            // S2 OPTIMIZACIJA: Proveravamo pre-izračunati MapTile
+            // tileId koji front šalje je npr "5_18_12", ali u bazi je "5_18_12_ALL"
+            String dbTileId = tileId + "_" + range.name();
 
-            // fetch iz repozitorijuma po bounding box-u
+            var currentTile = cachedTiles.stream()
+                    .filter(t -> t.getId().equals(dbTileId))
+                    .findFirst();
+
+            // Ako tile NE POSTOJI u bazi (isEmpty) ili je videoCount 0,
+            // to znaci da tamo nema videa. PRESKOČI UPIT KA BAZI.
+            if (currentTile.isEmpty() || currentTile.get().getVideoCount() == 0) {
+                result.add(new TileVideoDto(tileId, new ArrayList<>()));
+                continue;
+            }
+
+            //  Samo ako kes potvrdi da videa IMA, radimo fetch
+            TileBounds bounds = TileUtils.tileToBounds(tileId);
             List<VideoPostDto> videos = videoPostRepository
-                    .findForMap(
-                            resolveFrom(TimeRange.ALL),
-                            bounds.getMinLat(),
-                            bounds.getMaxLat(),
-                            bounds.getMinLng(),
-                            bounds.getMaxLng()
-                    ).stream()
-                    .map(this::mapToDto)
-                    .toList();
+                    .findForMap(fromDate, bounds.getMinLat(), bounds.getMaxLat(),
+                            bounds.getMinLng(), bounds.getMaxLng())
+                    .stream().map(this::mapToDto).toList();
 
             result.add(new TileVideoDto(tileId, videos));
         }
         return result;
     }
-
-
-
-
-
 
 
     public LocalDateTime resolveFrom(TimeRange range) {
@@ -54,21 +69,6 @@ public class MapService {
         };
     }
 
-    public List<VideoPostDto> getVideosForMap(
-            double minLat,
-            double maxLat,
-            double minLng,
-            double maxLng,
-            TimeRange timeRange
-    ) {
-        LocalDateTime from = resolveFrom(timeRange);
-
-        return videoPostRepository
-                .findForMap(from, minLat, maxLat, minLng, maxLng)
-                .stream()
-                .map(this::mapToDto)
-                .toList();
-    }
 
 
     public VideoPostDto mapToDto(VideoPost post) {
