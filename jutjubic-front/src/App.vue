@@ -10,6 +10,10 @@
         </router-link>
 
         <div class="auth-buttons">
+          <!-- MAP BUTTON (uvek vidljivo) -->
+          <router-link to="/map" class="auth-btn map-btn">
+            📍 Map
+          </router-link>
           <template v-if="auth.token">
             <router-link to="/create-post" class="auth-btn">Create Post</router-link>
             <router-link to="/my-profile" class="auth-btn">My Profile</router-link>

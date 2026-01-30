@@ -3,8 +3,14 @@
     <!-- Header sa login/register -->
     <!--header class="home-header">
       <h1 class="logo"></h1>
+    </header>
 
-      <div class="auth-buttons">
+    <div class="auth-buttons">
+
+        <router-link to="/map" class="auth-btn">
+          📍 Map
+        </router-link>
+
         <template v-if="auth.token">
           <router-link to="/my-profile" class="auth-btn">My Profile</router-link>
           <router-link to="/create-post" class="auth-btn">Create Post</router-link>
@@ -15,7 +21,8 @@
           <router-link to="/register" class="auth-btn">Register</router-link>
         </template>
       </div>
-    </header> -->
+      -->
+
 
     <!-- Videos -->
     <div class="videos">

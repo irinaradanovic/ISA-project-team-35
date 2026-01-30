@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 @ToString
 
 public class VideoPostDto {
+    //za prikaz
     private Integer id;
     private String title;
     private String description;
@@ -17,7 +18,12 @@ public class VideoPostDto {
     private String videoPath;
     private String thumbnailPath;
     private LocalDateTime createdAt;
-    private String location;
+
+    private String city;
+    private String country;
+    private Double latitude;   //za mapu
+    private Double longitude;
+
     private String ownerUsername;
     private Long ownerId;
     private int likeCount;

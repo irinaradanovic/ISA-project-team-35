@@ -53,18 +53,6 @@ public class VideoPostController {
     }
 
 
-    private VideoPostDto mapToDto(VideoPost post) {
-        VideoPostDto dto = new VideoPostDto();
-        dto.setId(post.getId());
-        dto.setTitle(post.getTitle());
-        dto.setDescription(post.getDescription());
-        dto.setTags(post.getTags());
-        dto.setThumbnailPath(post.getThumbnailPath());
-        dto.setVideoPath(post.getVideoPath());
-        dto.setCreatedAt(post.getCreatedAt());
-        dto.setLocation(post.getLocation());
-        return dto;
-    }
 
 
     //u postmanu thumbnail i video postavljas sa racunara
@@ -75,7 +63,11 @@ public class VideoPostController {
             @RequestParam("tags") String tags,
             @RequestParam("video") MultipartFile video,
             @RequestParam("thumbnail") MultipartFile thumbnail,
-            @RequestParam(value = "location", required = false) String location
+            @RequestParam(required = false) String address,  // dodato
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String country,
+            @RequestParam(required = false) Double latitude,
+            @RequestParam(required = false) Double longitude
     ) {
 
             VideoPostUploadDto dto = new VideoPostUploadDto();
@@ -84,7 +76,11 @@ public class VideoPostController {
             dto.setTags(tags);
             dto.setVideo(video);
             dto.setThumbnail(thumbnail);
-            dto.setLocation(location);
+            dto.setAddress(address);
+            dto.setCountry(country);
+            dto.setCity(city);
+            dto.setLatitude(latitude);
+            dto.setLongitude(longitude);
 
             try {
                 VideoPostDto post = postService.createPost(dto);

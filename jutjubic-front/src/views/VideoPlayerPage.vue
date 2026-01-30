@@ -30,8 +30,9 @@
       <p class="description">{{ video.description }}</p>
 
       <div class="extra-info">
-        <div v-if="video.location" class="location-badge">
-          <i class="fas fa-map-marker-alt"></i> {{ video.location }}
+        <div v-if="video.city || video.country" class="location-badge">
+          <i class="fas fa-map-marker-alt"></i>
+          {{ video.city }}, {{ video.country }}
         </div>
 
         <div class="tags-list">
@@ -250,7 +251,6 @@ const addComment = async () => {
       addComment,
       formatDate,
       splitTags,
-      location
     };
   },
 };

@@ -2,6 +2,7 @@ package com.isa.jutjubic.service;
 
 import com.isa.jutjubic.dto.VideoPostDto;
 import com.isa.jutjubic.dto.VideoPostUploadDto;
+import com.isa.jutjubic.model.GeoLocation;
 import com.isa.jutjubic.model.User;
 import com.isa.jutjubic.model.VideoPost;
 import com.isa.jutjubic.repository.UserRepository;
@@ -15,8 +16,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,13 +41,11 @@ public class VideoPostService {
     @Autowired
     private CacheManager cacheManager;
 
-    public List<VideoPostDto> getAllPosts() {
-        return postRepository.findAll()
-                .stream()
-                .map(this::mapToDto)
-                .collect(Collectors.toList());
-    }
+    @Autowired
+    private MapTileService mapTileService;
 
+    @Autowired
+    private GeocodingService geocodingService;
 
     public VideoPostDto mapToDto(VideoPost post) {
         VideoPostDto dto = new VideoPostDto();
@@ -59,7 +56,12 @@ public class VideoPostService {
         dto.setThumbnailPath(post.getThumbnailPath());
         dto.setVideoPath(post.getVideoPath());
         dto.setCreatedAt(post.getCreatedAt());
-        dto.setLocation(post.getLocation());
+        if (post.getLocation() != null) {
+            dto.setCity(post.getLocation().getCity());
+            dto.setCountry(post.getLocation().getCountry());
+            dto.setLatitude(post.getLocation().getLatitude());
+            dto.setLongitude(post.getLocation().getLongitude());
+        }
         dto.setOwnerUsername(post.getOwner().getUsername());
         dto.setLikeCount(post.getLikeCount());
         dto.setCommentCount(post.getCommentCount());
@@ -83,12 +85,26 @@ public class VideoPostService {
             throw new IllegalArgumentException("At least one tag is required");
         }
 
+        long startTime = System.currentTimeMillis();
+        long timeoutMillis = 10_000; // 10 sekundi
+
         String videoPath = null;
         String thumbnailPath = null;
 
         try {
             thumbnailPath = fileStorageService.saveFile(dto.getThumbnail(), "thumbnails");
+
+            // proveri da li je proslo više od timeout-a
+            if (System.currentTimeMillis() - startTime > timeoutMillis) {
+                throw new IOException("Upload timeout - thumbnail upload took too long");
+            }
+
             videoPath = fileStorageService.saveFile(dto.getVideo(), "videos");
+
+            // proveri ponovo
+            if (System.currentTimeMillis() - startTime > timeoutMillis) {
+                throw new IOException("Upload timeout - video upload took too long");
+            }
 
             Long ownerId = SecurityUtils.getCurrentUserId();  //pronalazimo ulogovanog korisnika
             User owner = userRepository.findById(ownerId)
@@ -101,12 +117,33 @@ public class VideoPostService {
             post.setThumbnailPath(thumbnailPath);
             post.setVideoPath(videoPath);
             post.setCreatedAt(LocalDateTime.now());
-            post.setLocation(dto.getLocation());
             post.setOwner(owner);
+            GeoLocation loc = new GeoLocation();
+
+                 // Ako frontend NIJE poslao koordinate, tek onda zovi API (fallback)
+            if (dto.getLatitude() == null || dto.getLongitude() == null) {
+                if (dto.getAddress() != null && !dto.getAddress().isBlank()) {
+                    geocodingService.fillLocationData(dto, loc);
+                }
+            } else {
+                // Ako je frontend već odradio posao, samo prepisi vrednosti
+                loc.setCity(dto.getCity());
+                loc.setCountry(dto.getCountry());
+                loc.setLatitude(dto.getLatitude());
+                loc.setLongitude(dto.getLongitude());
+                loc.setAddress(dto.getAddress());
+            }
+
+            post.setLocation(loc);
 
 
-            //return postRepository.save(post);
             postRepository.save(post);
+
+            // [S2] dodato za mapu 3.18:
+            if (post.getLocation() != null) {
+                mapTileService.updateTileForNewVideo(post);
+            }
+
             return mapToDto(post);
 
         } catch (IOException e) {
@@ -127,6 +164,11 @@ public class VideoPostService {
 
         if(!post.getOwner().getId().equals(userId)){
             throw new SecurityException("You cannot delete someone else's video!");
+        }
+
+        // dodato: Smanjujemo brojace na mapi pre nego što obelezimo video kao obrisan
+        if (post.getLocation() != null) {
+            mapTileService.updateTileForDeletedVideo(post);
         }
         post.setDeleted(true);
 
@@ -168,7 +210,6 @@ public class VideoPostService {
                 .map(this::mapToDto);
     }
 
-   // @Transactional
     public void incrementViews(Integer videoId) {
         int updated = postRepository.incrementViews(videoId);
         if (updated == 0) {

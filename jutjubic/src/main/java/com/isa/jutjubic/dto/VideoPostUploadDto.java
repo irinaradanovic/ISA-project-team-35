@@ -15,5 +15,12 @@ public class VideoPostUploadDto {
     private String tags;
     private MultipartFile video;
     private MultipartFile thumbnail;
-    private String location;
+
+    private String city;
+    private String country;
+    private Double latitude;
+    private Double longitude;
+
+    private String address;  //ovo korisnik unosi za lokaciju
+
 }

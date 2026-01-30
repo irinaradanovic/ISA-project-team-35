@@ -109,17 +109,17 @@
         <input
             type="text"
             v-model="locationInput"
-            @input="filterLocations"
-            placeholder="Enter the city name..."
+            @input="onLocationInput"
+            placeholder="Start typing an address (e.g. Bulevar osl...)"
         />
 
         <ul v-if="filteredLocations.length" class="location-list">
           <li
-              v-for="loc in filteredLocations"
-              :key="loc"
+              v-for="(loc, index) in filteredLocations"
+              :key="index"
               @click="selectLocation(loc)"
           >
-            {{ loc }}
+            {{ loc.display_name }}
           </li>
         </ul>
       </div>
@@ -147,6 +147,8 @@
 import axios from 'axios';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import cities from '@/assets/cities.json';
+
 
 export default {
   setup() {
@@ -175,21 +177,14 @@ export default {
         'Fitness'
       ],
       selectedTags: [],
-      locationInput: '',
-      locations: [
-        'Beograd',
-        'Novi Sad',
-        'Niš',
-        'Kragujevac',
-        'Subotica',
-        'Zagreb',
-        'Sarajevo',
-        'Split',
-        'Ljubljana'
-      ],
-      filteredLocations: [],
+      selectedLocation: null,
+      cities: cities,
       thumbnailPreview: null,
       videoPreview: null,
+      locationInput: '',
+      filteredLocations: [],
+      searchTimeout: null, // Za debounce
+      apiKey: 'pk.5b03a9b9443bea45a4a22ec87c997a55' // token za locationiq
 
 
 
@@ -272,16 +267,79 @@ export default {
       }
     },
     filterLocations() {
-      const input = this.locationInput.toLowerCase();
-      this.filteredLocations = this.locations.filter(loc =>
-          loc.toLowerCase().startsWith(input)
+      const input = this.locationInput.trim().toLowerCase();
+
+      // Ako je input prazan → prikaži sve
+      if (!input) {
+        this.filteredLocations = [...this.cities];
+        return;
+      }
+
+      this.filteredLocations = this.cities.filter(c =>
+          c.city.toLowerCase().startsWith(input) ||
+          c.country.toLowerCase().startsWith(input)
       );
     },
 
-    selectLocation(loc) {
-      this.locationInput = loc;
+   /* selectLocation(cityObj) {
+      this.selectedLocation = cityObj;
+      this.locationInput = `${cityObj.city}, ${cityObj.country}`;
       this.filteredLocations = [];
+    }, */
+
+
+    onLocationInput() {
+      // Očisti prethodni tajmer (ako korisnik nastavi da kuca brzo)
+      clearTimeout(this.searchTimeout);
+
+      const query = this.locationInput.trim();
+      if (query.length < 3) {
+        this.filteredLocations = [];
+        return;
+      }
+
+      // Čekaj 300ms nakon što korisnik prestane da kuca
+      this.searchTimeout = setTimeout(async () => {
+        try {
+          const url = `https://us1.locationiq.com/v1/search.php?key=${this.apiKey}&q=${query}&format=json&addressdetails=1&limit=5`;
+          // Koristimo fetch jer on ignoriše Axios presretače (interceptors)
+          const response = await fetch(url);
+
+          if (!response.ok) {
+            throw new Error('LocationIQ request failed');
+          }
+
+          const data = await response.json();
+          this.filteredLocations = data;
+
+          console.log("Rezultati sa LocationIQ:", data); // Za debug
+        } catch (error) {
+          console.error("Geocoding autocomplete failed", error);
+          this.filteredLocations = [];
+        }
+      }, 300);
     },
+
+    selectLocation(loc) {
+      // loc.display_name je pun opis lokacije
+      this.locationInput = loc.display_name;
+      this.filteredLocations = [];
+
+      // LocationIQ vraća podatke u 'address' objektu ako je dodat parametar addressdetails=1
+      const addr = loc.address || {};
+
+      this.selectedLocation = {
+        // Pokušavamo da nađemo grad, ako nema, uzimamo city_district ili town
+        city: loc.address.city || loc.town || loc.village || "",
+        country: loc.address.country || "",
+        latitude: parseFloat(loc.lat), // LocationIQ vraća lat/lon kao stringove, pretvaramo u brojeve
+        longitude: parseFloat(loc.lon),
+        address: loc.display_name
+
+      };
+      console.log("Selektovana lokacija spremna za slanje:", this.selectedLocation);
+    },
+
 
     async submitPost() {
 
@@ -321,12 +379,26 @@ export default {
         return;
       }
 
+      if (this.locationInput && !this.selectedLocation) {
+        this.message = "Please select a location from the list.";
+        this.success = false;
+        return;
+      }
 
       const formData = new FormData();
       formData.append('title', this.title);
       formData.append('description', this.description);
       formData.append('tags', this.selectedTags.join(','));
-      formData.append('location', this.locationInput);
+
+
+      // Ako je korisnik izabrao lokaciju iz liste
+      if (this.selectedLocation) {
+        formData.append('city', this.selectedLocation.city);
+        formData.append('country', this.selectedLocation.country);
+        formData.append('latitude', this.selectedLocation.latitude);
+        formData.append('longitude', this.selectedLocation.longitude);
+        formData.append('address', this.selectedLocation.address);
+      }
       formData.append('thumbnail', this.thumbnail);
       formData.append('video', this.video);
 
@@ -446,15 +518,19 @@ export default {
 
 
 .location-list {
+  position: static;
+  z-index: 1000;
+  width: 100%;
   list-style: none;
   padding: 0;
-  margin: 4px 0 0;
+  margin-top: 4px;
   border: 1px solid #ccc;
-  border-radius: 4px;
+  border-radius: 6px;
   background: white;
-  max-height: 150px;
+  max-height: 180px;
   overflow-y: auto;
 }
+
 
 .location-list li {
   padding: 8px;
