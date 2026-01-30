@@ -109,20 +109,19 @@
         <input
             type="text"
             v-model="locationInput"
-            @input="filterLocations"
-            placeholder="Enter the city name..."
+            @input="onLocationInput"
+            placeholder="Start typing an address (e.g. Bulevar osl...)"
         />
 
         <ul v-if="filteredLocations.length" class="location-list">
           <li
-              v-for="loc in filteredLocations"
-              :key="loc.city + loc.country"
+              v-for="(loc, index) in filteredLocations"
+              :key="index"
               @click="selectLocation(loc)"
           >
-            {{ loc.city }}, {{ loc.country }}
+            {{ loc.display_name }}
           </li>
         </ul>
-
       </div>
 
       <!-- ogranicava korisnika da mora da unese ova polja-->
@@ -178,12 +177,14 @@ export default {
         'Fitness'
       ],
       selectedTags: [],
-      locationInput: '',
       selectedLocation: null,
-      filteredLocations: [],
       cities: cities,
       thumbnailPreview: null,
       videoPreview: null,
+      locationInput: '',
+      filteredLocations: [],
+      searchTimeout: null, // Za debounce
+      apiKey: 'pk.5b03a9b9443bea45a4a22ec87c997a55' // token za locationiq
 
 
 
@@ -280,11 +281,65 @@ export default {
       );
     },
 
-    selectLocation(cityObj) {
+   /* selectLocation(cityObj) {
       this.selectedLocation = cityObj;
       this.locationInput = `${cityObj.city}, ${cityObj.country}`;
       this.filteredLocations = [];
+    }, */
+
+
+    onLocationInput() {
+      // Očisti prethodni tajmer (ako korisnik nastavi da kuca brzo)
+      clearTimeout(this.searchTimeout);
+
+      const query = this.locationInput.trim();
+      if (query.length < 3) {
+        this.filteredLocations = [];
+        return;
+      }
+
+      // Čekaj 300ms nakon što korisnik prestane da kuca
+      this.searchTimeout = setTimeout(async () => {
+        try {
+          const url = `https://us1.locationiq.com/v1/search.php?key=${this.apiKey}&q=${query}&format=json&addressdetails=1&limit=5`;
+          // Koristimo fetch jer on ignoriše Axios presretače (interceptors)
+          const response = await fetch(url);
+
+          if (!response.ok) {
+            throw new Error('LocationIQ request failed');
+          }
+
+          const data = await response.json();
+          this.filteredLocations = data;
+
+          console.log("Rezultati sa LocationIQ:", data); // Za debug
+        } catch (error) {
+          console.error("Geocoding autocomplete failed", error);
+          this.filteredLocations = [];
+        }
+      }, 300);
     },
+
+    selectLocation(loc) {
+      // loc.display_name je pun opis lokacije
+      this.locationInput = loc.display_name;
+      this.filteredLocations = [];
+
+      // LocationIQ vraća podatke u 'address' objektu ako je dodat parametar addressdetails=1
+      const addr = loc.address || {};
+
+      this.selectedLocation = {
+        // Pokušavamo da nađemo grad, ako nema, uzimamo city_district ili town
+        city: loc.address.city || loc.town || loc.village || "",
+        country: loc.address.country || "",
+        latitude: parseFloat(loc.lat), // LocationIQ vraća lat/lon kao stringove, pretvaramo u brojeve
+        longitude: parseFloat(loc.lon),
+        address: loc.display_name
+
+      };
+      console.log("Selektovana lokacija spremna za slanje:", this.selectedLocation);
+    },
+
 
     async submitPost() {
 
@@ -334,11 +389,15 @@ export default {
       formData.append('title', this.title);
       formData.append('description', this.description);
       formData.append('tags', this.selectedTags.join(','));
+
+
+      // Ako je korisnik izabrao lokaciju iz liste
       if (this.selectedLocation) {
         formData.append('city', this.selectedLocation.city);
         formData.append('country', this.selectedLocation.country);
-        formData.append('latitude', this.selectedLocation.lat);
-        formData.append('longitude', this.selectedLocation.lng);
+        formData.append('latitude', this.selectedLocation.latitude);
+        formData.append('longitude', this.selectedLocation.longitude);
+        formData.append('address', this.selectedLocation.address);
       }
       formData.append('thumbnail', this.thumbnail);
       formData.append('video', this.video);

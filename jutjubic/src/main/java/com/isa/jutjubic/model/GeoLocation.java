@@ -10,6 +10,7 @@ import lombok.*;
 @Getter @Setter
 public class GeoLocation {
 
+    private String address; // dodajemo da bismo znali sta je korisnik tacno ukucao
     private String city;
     private String country;
     private double latitude; //geo sirina

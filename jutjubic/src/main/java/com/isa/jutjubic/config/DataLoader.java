@@ -54,7 +54,7 @@ public class DataLoader implements CommandLineRunner {
         return String.join(",", tags.subList(0, 2));
     }
 
-    private GeoLocation randomGeoLocation() {
+  /*  private GeoLocation randomGeoLocation() {
         List<GeoLocation> locations = List.of(
                 // Serbia
                 new GeoLocation("Belgrade", "Serbia", 44.7866, 20.4489),
@@ -139,7 +139,48 @@ public class DataLoader implements CommandLineRunner {
 
         return locations.get(new Random().nextInt(locations.size()));
     }
+ */
 
+    private GeoLocation randomGeoLocation() {
+        List<GeoLocation> hotspots = List.of(
+                // SRBIJA
+                new GeoLocation("Knez Mihailova, Belgrade", "Belgrade", "Serbia", 44.8150, 20.4612),
+                new GeoLocation("Kalemegdan Park, Belgrade", "Belgrade", "Serbia", 44.8228, 20.4503),
+                new GeoLocation("SPENS, Novi Sad", "Novi Sad", "Serbia", 45.2442, 19.8431),
+                new GeoLocation("Štrand, Novi Sad", "Novi Sad", "Serbia", 45.2346, 19.8458),
+
+                // REGION
+                new GeoLocation("Baščaršija, Sarajevo", "Sarajevo", "BiH", 43.8598, 18.4313),
+                new GeoLocation("Riva, Split", "Split", "Croatia", 43.5075, 16.4392),
+                new GeoLocation("Trg Bana Jelačića, Zagreb", "Zagreb", "Croatia", 45.8131, 15.9772),
+                new GeoLocation("Skopje Fortress, Skopje", "Skopje", "N. Macedonia", 42.0007, 21.4335),
+
+                // EVROPA
+                new GeoLocation("Stephansplatz, Vienna", "Vienna", "Austria", 48.2082, 16.3731),
+                new GeoLocation("Charles Bridge, Prague", "Prague", "Czech Republic", 50.0865, 14.4114),
+                new GeoLocation("Brandenburg Gate, Berlin", "Berlin", "Germany", 52.5163, 13.3777),
+                new GeoLocation("Eiffel Tower, Paris", "Paris", "France", 48.8584, 2.2945),
+                new GeoLocation("Colosseum, Rome", "Rome", "Italy", 41.8902, 12.4922),
+                new GeoLocation("Sagrada Familia, Barcelona", "Barcelona", "Spain", 41.4036, 2.1744),
+                new GeoLocation("Dam Square, Amsterdam", "Amsterdam", "Netherlands", 52.3731, 4.8926)
+        );
+
+        GeoLocation base = hotspots.get(new Random().nextInt(hotspots.size()));
+        Random r = new Random();
+
+
+        // Ovo znaci da će videi biti u krugu od oko 300-500 metara od centra (npr. u okolnim ulicama oko Knez Mihailove).
+        double jitterLat = (r.nextDouble() - 0.5) * 0.003;
+        double jitterLng = (r.nextDouble() - 0.5) * 0.003;
+
+        return new GeoLocation(
+                base.getAddress(), // adresa ce biti hotspot
+                base.getCity(),
+                base.getCountry(),
+                base.getLatitude() + jitterLat,
+                base.getLongitude() + jitterLng
+        );
+    }
 
     private LocalDateTime randomCreatedAt() {
         Random random = new Random();
