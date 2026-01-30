@@ -30,7 +30,7 @@
       <p class="description">{{ video.description }}</p>
 
       <div class="extra-info">
-        <div v-if="video.city && video.country" class="location-badge">
+        <div v-if="video.city || video.country" class="location-badge">
           <i class="fas fa-map-marker-alt"></i>
           {{ video.city }}, {{ video.country }}
         </div>

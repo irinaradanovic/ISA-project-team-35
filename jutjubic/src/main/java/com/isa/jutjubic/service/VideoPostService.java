@@ -44,6 +44,9 @@ public class VideoPostService {
     @Autowired
     private MapTileService mapTileService;
 
+    @Autowired
+    private GeocodingService geocodingService;
+
     public VideoPostDto mapToDto(VideoPost post) {
         VideoPostDto dto = new VideoPostDto();
         dto.setId(post.getId());
@@ -115,18 +118,24 @@ public class VideoPostService {
             post.setVideoPath(videoPath);
             post.setCreatedAt(LocalDateTime.now());
             post.setOwner(owner);
-            GeoLocation geoLocation = null;
+            GeoLocation loc = new GeoLocation();
 
-            if (dto.getCity() != null && !dto.getCity().isBlank()) {
-                geoLocation = new GeoLocation(
-                        dto.getCity(),
-                        dto.getCountry(),
-                        dto.getLatitude(),
-                        dto.getLongitude()
-                );
+                 // Ako frontend NIJE poslao koordinate, tek onda zovi API (fallback)
+            if (dto.getLatitude() == null || dto.getLongitude() == null) {
+                if (dto.getAddress() != null && !dto.getAddress().isBlank()) {
+                    geocodingService.fillLocationData(dto, loc);
+                }
+            } else {
+                // Ako je frontend već odradio posao, samo prepisi vrednosti
+                loc.setCity(dto.getCity());
+                loc.setCountry(dto.getCountry());
+                loc.setLatitude(dto.getLatitude());
+                loc.setLongitude(dto.getLongitude());
+                loc.setAddress(dto.getAddress());
             }
 
-            post.setLocation(geoLocation);
+            post.setLocation(loc);
+
 
             postRepository.save(post);
 
