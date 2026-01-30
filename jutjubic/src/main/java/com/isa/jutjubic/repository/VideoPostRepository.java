@@ -59,4 +59,5 @@ public interface VideoPostRepository extends JpaRepository<VideoPost, Integer> {
             @Param("maxLng") double maxLng
     );
 
+
 }

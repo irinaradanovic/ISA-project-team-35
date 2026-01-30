@@ -1,10 +1,13 @@
 package com.isa.jutjubic.model;
 
+import com.isa.jutjubic.dto.VideoPostDto;
+import com.isa.jutjubic.dto.TileType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Builder
 @Entity
@@ -22,5 +25,6 @@ public class MapTile {
     // sredisnja tacka kvadrata - za iscrtavanje markera na mapi
     private double centerLat;
     private double centerLng;
+
 
 }

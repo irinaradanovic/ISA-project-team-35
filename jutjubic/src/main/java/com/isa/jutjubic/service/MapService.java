@@ -1,75 +1,133 @@
 package com.isa.jutjubic.service;
 import com.isa.jutjubic.dto.TileVideoDto;
 import com.isa.jutjubic.dto.VideoPostDto;
+import com.isa.jutjubic.dto.TileType;
 import com.isa.jutjubic.model.MapTile;
 import com.isa.jutjubic.model.VideoPost;
 import com.isa.jutjubic.repository.MapTileRepository;
 import com.isa.jutjubic.repository.VideoPostRepository;
-import com.isa.jutjubic.security.utils.TileBounds;
-import com.isa.jutjubic.security.utils.TileUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
 import com.isa.jutjubic.dto.TimeRange;
+
+import static java.util.stream.Collectors.groupingBy;
 
 @Service
 public class MapService {
+
     @Autowired
     private VideoPostRepository videoPostRepository;
 
     @Autowired
     private MapTileRepository mapTileRepository;
 
+    private static final int DETAIL_ZOOM = 14;
 
-    public List<TileVideoDto> getVideosForTiles(List<String> tileIds, String timeRangeStr) {
-        TimeRange range = TimeRange.valueOf(timeRangeStr);
-        List<String> dbIds = tileIds.stream().map(id -> id + "_" + range.name()).toList();
+    // =====================================================
+    // ENTRY POINT
+    // =====================================================
+    public List<TileVideoDto> getVideosForTiles(List<String> tileIds, TimeRange range) {
 
-        // Povuci SVE kesirane podatke odjednom (Batch)
-        List<MapTile> cachedTiles = mapTileRepository.findAllById(dbIds);
-        List<TileVideoDto> result = new ArrayList<>();
-        LocalDateTime fromDate = resolveFrom(range);
+        int zoom = extractZoom(tileIds.get(0));
 
-        for (String tileId : tileIds) {
-            // S2 OPTIMIZACIJA: Proveravamo pre-izračunati MapTile
-            // tileId koji front šalje je npr "5_18_12", ali u bazi je "5_18_12_ALL"
-            String dbTileId = tileId + "_" + range.name();
-
-            var currentTile = cachedTiles.stream()
-                    .filter(t -> t.getId().equals(dbTileId))
-                    .findFirst();
-
-            // Ako tile NE POSTOJI u bazi (isEmpty) ili je videoCount 0,
-            // to znaci da tamo nema videa. PRESKOČI UPIT KA BAZI.
-            if (currentTile.isEmpty() || currentTile.get().getVideoCount() == 0) {
-                result.add(new TileVideoDto(tileId, new ArrayList<>()));
-                continue;
-            }
-
-            //  Samo ako kes potvrdi da videa IMA, radimo fetch
-            TileBounds bounds = TileUtils.tileToBounds(tileId);
-            List<VideoPostDto> videos = videoPostRepository
-                    .findForMap(fromDate, bounds.getMinLat(), bounds.getMaxLat(),
-                            bounds.getMinLng(), bounds.getMaxLng())
-                    .stream().map(this::mapToDto).toList();
-
-            result.add(new TileVideoDto(tileId, videos));
+        if (zoom >= DETAIL_ZOOM) {
+            return getDetailedVideos(tileIds, range);
         }
+
+        return getAggregatedTiles(tileIds, range);
+    }
+
+    // =====================================================
+    // AGGREGATE TILES (LOW / MID ZOOM)
+    // =====================================================
+    private List<TileVideoDto> getAggregatedTiles(List<String> tileIds, TimeRange range) {
+
+        List<MapTile> tiles = mapTileRepository.findAllById(
+                tileIds.stream()
+                        .map(id -> id + "_" + range.name())
+                        .toList()
+        );
+
+        return tiles.stream()
+                .filter(t -> t.getVideoCount() > 0)
+                .map(t -> {
+                    String[] p = t.getId().split("_");
+
+                    return new TileVideoDto(
+                            t.getId(),
+                            Integer.parseInt(p[0]),
+                            Integer.parseInt(p[1]),
+                            Integer.parseInt(p[2]),
+                            t.getVideoCount(),
+                            t.getCenterLat(),
+                            t.getCenterLng(),
+                            null,
+                            TileType.AGGREGATE
+                    );
+                })
+                .toList();
+    }
+
+    // =====================================================
+    // DETAILED VIDEOS (HIGH ZOOM)
+    // =====================================================
+    private List<TileVideoDto> getDetailedVideos(List<String> tileIds, TimeRange range) {
+
+        LocalDateTime from = resolveFrom(range);
+
+        BoundingBox bbox = calculateBoundingBox(tileIds);
+
+        List<VideoPost> videos = videoPostRepository.findForMap(
+                from,
+                bbox.minLat,
+                bbox.maxLat,
+                bbox.minLng,
+                bbox.maxLng
+        );
+
+        Map<String, List<VideoPost>> grouped =
+                videos.stream()
+                        .collect(groupingBy(this::buildTileId));
+
+        List<TileVideoDto> result = new ArrayList<>();
+
+        grouped.forEach((tileId, vids) -> {
+            if (!tileIds.contains(tileId)) return;
+
+            String[] p = tileId.split("_");
+
+            result.add(new TileVideoDto(
+                    tileId,
+                    Integer.parseInt(p[0]),
+                    Integer.parseInt(p[1]),
+                    Integer.parseInt(p[2]),
+                    vids.size(),
+                    0,
+                    0,
+                    vids.stream().map(this::mapToDto).toList(),
+                    TileType.VIDEO
+            ));
+        });
+
         return result;
     }
 
-
+    // =====================================================
+    // EXISTING METHODS (NE DIRAMO)
+    // =====================================================
     public LocalDateTime resolveFrom(TimeRange range) {
         return switch (range) {
             case LAST_30_DAYS -> LocalDateTime.now().minusDays(30);
-            case THIS_YEAR -> LocalDateTime.now().withDayOfYear(1).withHour(0).withMinute(0).withSecond(0);
-            case ALL -> LocalDateTime.of(2020, 1, 1, 0, 0); // all svi videi od 2020. npr
+            case THIS_YEAR -> LocalDateTime.now().withDayOfYear(1)
+                    .withHour(0).withMinute(0).withSecond(0);
+            case ALL -> LocalDateTime.of(2020, 1, 1, 0, 0);
         };
     }
-
-
 
     public VideoPostDto mapToDto(VideoPost post) {
         VideoPostDto dto = new VideoPostDto();
@@ -93,4 +151,75 @@ public class MapService {
         dto.setOwnerId(post.getOwner().getId());
         return dto;
     }
+
+    private int extractZoom(String tileId) {
+        return Integer.parseInt(tileId.split("_")[0]);
+    }
+
+    private String buildTileId(VideoPost v) {
+        int zoom = DETAIL_ZOOM;
+        int x = lonToTileX(v.getLocation().getLongitude(), zoom);
+        int y = latToTileY(v.getLocation().getLatitude(), zoom);
+        return zoom + "_" + x + "_" + y;
+    }
+
+    private int lonToTileX(double lon, int zoom) {
+        return (int) Math.floor((lon + 180) / 360 * (1 << zoom));
+    }
+
+    private int latToTileY(double lat, int zoom) {
+        double latRad = Math.toRadians(lat);
+        return (int) Math.floor(
+                (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI)
+                        / 2 * (1 << zoom)
+        );
+    }
+
+    private BoundingBox calculateBoundingBox(List<String> tileIds) {
+
+        double minLat = 90, maxLat = -90;
+        double minLng = 180, maxLng = -180;
+
+        for (String id : tileIds) {
+            String[] p = id.split("_");
+            int zoom = Integer.parseInt(p[0]);
+            int x = Integer.parseInt(p[1]);
+            int y = Integer.parseInt(p[2]);
+
+            TileBounds b = tileToBounds(x, y, zoom);
+
+            minLat = Math.min(minLat, b.minLat);
+            maxLat = Math.max(maxLat, b.maxLat);
+            minLng = Math.min(minLng, b.minLng);
+            maxLng = Math.max(maxLng, b.maxLng);
+        }
+
+        return new BoundingBox(minLat, maxLat, minLng, maxLng);
+    }
+
+    private TileBounds tileToBounds(int x, int y, int zoom) {
+        double n = Math.pow(2, zoom);
+
+        double lon1 = x / n * 360.0 - 180.0;
+        double lon2 = (x + 1) / n * 360.0 - 180.0;
+
+        double lat1 = Math.toDegrees(Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))));
+        double lat2 = Math.toDegrees(Math.atan(Math.sinh(Math.PI * (1 - 2 * (y + 1) / n))));
+
+        return new TileBounds(lat2, lat1, lon1, lon2);
+    }
+
+    private record BoundingBox(
+            double minLat,
+            double maxLat,
+            double minLng,
+            double maxLng
+    ) {}
+
+    private record TileBounds(
+            double minLat,
+            double maxLat,
+            double minLng,
+            double maxLng
+    ) {}
 }

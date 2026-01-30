@@ -1,4 +1,3 @@
-
 <template>
   <div id="map-container">
     <div class="filter-overlay">
@@ -101,71 +100,109 @@ function loadTilesForViewport() {
   const bounds = map.value.getBounds();
   const zoom = map.value.getZoom();
   const visibleTiles = getVisibleTileIds(bounds, zoom);
+  
+  console.log('🔍 Visible tiles:', visibleTiles);
+  console.log('🗺️ Current zoom:', zoom);
 
-  // Proveravamo kes (koji je prazan ako je filter tek promenjen)
   const missingTiles = visibleTiles.filter(tileId => !tileCache.value.has(tileId));
+  
+  console.log('📥 Missing tiles to fetch:', missingTiles);
 
   if (missingTiles.length === 0) {
+    console.log('✅ Using cache');
     renderFromCache(visibleTiles);
     return;
   }
 
-  // S2: Saljemo i listu tile-ova i timeRange backendu
+  console.log('🌐 Fetching from backend...');
   fetchVideosForMap({
     tiles: missingTiles,
     timeRange: selectedTimeRange.value
   })
-      .then(res => {
-        res.data.forEach(tile => {
-          tileCache.value.set(tile.tileId, tile.videos);
-        });
-        renderFromCache(visibleTiles);
-      })
-      .catch(err => {
-        console.error("Greška pri učitavanju tile-ova:", err);
+    .then(res => {
+      console.log('📦 Response from backend:', res.data);
+      res.data.forEach(tile => {
+        console.log('💾 Caching tile:', tile.tileId, tile);
+        tileCache.value.set(tile.tileId, tile);
       });
+      renderFromCache(visibleTiles);
+    })
+    .catch(err => {
+      console.error("Greška pri učitavanju tile-ova:", err);
+    });
 }
 
 // -------------------- RENDER MARKERS --------------------
 function renderFromCache(tileIds) {
   if (!markerCluster.value) return;
 
+  console.log('🎨 Rendering from cache, tileIds:', tileIds);
   markerCluster.value.clearLayers();
 
   tileIds.forEach(tileId => {
-    const videos = tileCache.value.get(tileId) || [];
+    // Dodaj suffix za traženje u cache-u
+    const cacheKey = `${tileId}_${selectedTimeRange.value}`;
+    const tile = tileCache.value.get(cacheKey);
+    console.log('🔎 Tile from cache:', cacheKey, tile);
+    
+    if (!tile) {
+      console.log('⚠️ Tile not found in cache:', cacheKey);
+      return;
+    }
 
-    videos.forEach(video => {
-      if (!video.latitude || !video.longitude) return;
+    if (tile.type === 'AGGREGATE') {
+      console.log('📍 Creating AGGREGATE marker:', tile);
+      const clusterMarker = L.circleMarker([tile.centerLat, tile.centerLng], {
+        radius: Math.min(30, Math.max(15, Math.log(tile.videoCount) * 3)),
+        fillColor: '#ff6b6b',
+        fillOpacity: 0.6,
+        color: '#c92a2a',
+        weight: 2
+      });
 
-      const marker = L.marker([video.latitude, video.longitude]);
-
-      marker.bindPopup(`
-        <div style="min-width: 150px;">
-          <img src="http://localhost:8080/${video.thumbnailPath}" style="width:100%; border-radius:4px;"/>
-          <br><b>${video.title}</b><br>
-          <small>${new Date(video.createdAt).toLocaleDateString()}</small><br>
-          <button id="go-to-video-${video.id}" style="margin-top:10px; width:100%; cursor:pointer; background:#f00; color:#fff; border:none; padding:5px; border-radius:4px;">Gledaj</button>
+      clusterMarker.bindPopup(`
+        <div style="text-align:center; padding:5px;">
+          <b>${tile.videoCount}</b> videos<br>
+          <small>Zoom in to see details</small>
         </div>
       `);
 
-      marker.on("popupopen", () => {
-        const btn = document.getElementById(`go-to-video-${video.id}`);
-        if (btn) {
-          btn.addEventListener("click", () => {
-            router.push(`/video/${video.id}`);
-          });
-        }
+      markerCluster.value.addLayer(clusterMarker);
+      console.log('✅ AGGREGATE marker added');
+    } 
+    else if (tile.videos && tile.videos.length > 0) {
+      console.log('📍 Creating VIDEO markers:', tile.videos.length);
+      tile.videos.forEach(video => {
+        if (!video.latitude || !video.longitude) return;
+        const marker = L.marker([video.latitude, video.longitude]);
+        marker.bindPopup(`
+          <div style="min-width: 150px;">
+            <img src="http://localhost:8080/${video.thumbnailPath}" style="width:100%; border-radius:4px;"/>
+            <br><b>${video.title}</b><br>
+            <small>${new Date(video.createdAt).toLocaleDateString()}</small><br>
+            <button id="go-to-video-${video.id}" style="margin-top:10px; width:100%; cursor:pointer; background:#f00; color:#fff; border:none; padding:5px; border-radius:4px;">Gledaj</button>
+          </div>
+        `);
+        marker.on("popupopen", () => {
+          const btn = document.getElementById(`go-to-video-${video.id}`);
+          if (btn) {
+            btn.addEventListener("click", () => {
+              router.push(`/video/${video.id}`);
+            });
+          }
+        });
+        markerCluster.value.addLayer(marker);
       });
-
-      markerCluster.value.addLayer(marker);
-    });
+    } else {
+      console.log('⚠️ Tile has no videos and is not AGGREGATE:', tile);
+    }
   });
+  
+  console.log('✅ Rendering complete');
 }
 </script>
 
 <style scoped>
-
 /* Sprečava skakanje stranice kod zumiranja */
 #map-container .leaflet-control-zoom-in,
 #map-container .leaflet-control-zoom-out {
