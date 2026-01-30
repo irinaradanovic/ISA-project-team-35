@@ -28,13 +28,13 @@ public class FileStorageService {
 
     public String saveFile(MultipartFile file, String subFolder) throws IOException {
         //  simulacija sporog uploada - samo za testiranje
-      /*  try {
+       /* try {
             System.out.println("Simulating slow upload for: " + file.getOriginalFilename());
             Thread.sleep(7000);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("Upload interrupted");
-        }   */
+        }  */
 
         Path folderPath = rootUploadDir.resolve(subFolder);
 

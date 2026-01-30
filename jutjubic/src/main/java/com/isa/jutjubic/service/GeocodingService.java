@@ -31,7 +31,7 @@ public class GeocodingService {
                 location.setLongitude(Double.parseDouble(first.get("lon").toString()));
                 location.setAddress(query);
 
-                // LocationIQ vraća "display_name", iz njega možeš izvlačiti grad/državu ako ti treba
+                // LocationIQ vraca "display_name"
                 location.setCity(extractCity(first.get("display_name").toString()));
             }
         } catch (Exception e) {
@@ -40,7 +40,7 @@ public class GeocodingService {
     }
 
     private String extractCity(String displayName) {
-        // Jednostavna logika za izvlačenje prvog dela adrese
+        // izvlacenje prvog dela adrese
         return displayName.split(",")[0].trim();
     }
 }
