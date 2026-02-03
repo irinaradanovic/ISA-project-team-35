@@ -1,78 +1,104 @@
 <template>
   <div class="video-page">
-    <div class="video-container">
-      <h2>{{ video.title }}</h2>
-      <p class="username">by {{ video.ownerUsername }}</p>
+    <div :class="['main-layout', { 'streaming-layout': video.isStreaming }]">
 
-      <div class="video-section">
-        <video
-            v-if="video.videoPath"
-            controls
-            :src="videoUrl"
-            :poster="thumbnailUrl"
-        ></video>
+      <div class="video-content">
+        <div class="video-container">
+          <h2>{{ video.title }}</h2>
+          <p class="username">by {{ video.ownerUsername }}</p>
 
-        <div class="video-meta">
-          <div class="like-section">
-            <button @click="toggleLike" :class="{ liked: liked }" class="like-btn">
-              <i class="fas fa-thumbs-up"></i>
-            </button>
-            <span class="like-count">{{ likeCount }}</span>
-            <p v-if="likeError" class="error-message">{{ likeError }}</p>
+          <div class="video-section">
+            <video
+                v-if="video.videoPath"
+                controls
+                :src="videoUrl"
+                :poster="thumbnailUrl"
+            ></video>
+
+            <div class="video-meta">
+              <div class="like-section">
+                <button @click="toggleLike" :class="{ liked: liked }" class="like-btn">
+                  <i class="fas fa-thumbs-up"></i>
+                </button>
+                <span class="like-count">{{ likeCount }}</span>
+                <p v-if="likeError" class="error-message">{{ likeError }}</p>
+              </div>
+              <span class="view-count">
+                <i class="fas fa-eye"></i> {{ video.viewCount }} views
+              </span>
+              <p class="created-at">{{ formatDate(video.createdAt) }}</p>
+            </div>
           </div>
-          <span class="view-count">
-              <i class="fas fa-eye"></i> {{ video.viewCount }} views
-            </span>
-          <p class="created-at">{{ formatDate(video.createdAt) }}</p>
+
+          <p class="description">{{ video.description }}</p>
+
+          <div class="extra-info">
+            <div v-if="video.city || video.country" class="location-badge">
+              <i class="fas fa-map-marker-alt"></i>
+              {{ video.city }}, {{ video.country }}
+            </div>
+
+            <div class="tags-list">
+              <span v-for="tag in splitTags(video.tags)" :key="tag" class="tag-item">
+                #{{ tag }}
+              </span>
+            </div>
+          </div>
+
+          <div v-if="!video.isStreaming">
+            <div class="comment-form">
+              <input
+                  v-model="newComment"
+                  placeholder="Add a comment..."
+                  @keyup.enter="addComment"
+              />
+              <button @click="addComment" class="comment-submit-btn">Comment</button>
+            </div>
+            <p v-if="commentError" class="error-message">{{ commentError }}</p>
+            <div class="comments-section">
+              <p class="comment-count">{{ commentCount }} comments</p>
+              <div v-for="c in comments" :key="c.id" class="comment">
+                <strong>{{ c.authorUsername }}</strong>
+                <p>{{ c.content }}</p>
+                <span class="comment-date">{{ formatDate(c.createdAt) }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <p class="description">{{ video.description }}</p>
-
-      <div class="extra-info">
-        <div v-if="video.city || video.country" class="location-badge">
-          <i class="fas fa-map-marker-alt"></i>
-          {{ video.city }}, {{ video.country }}
+      <div v-if="video.isStreaming" class="chat-sidebar">
+        <div class="chat-header">Live Chat</div>
+        <div class="chat-messages" ref="chatWindow">
+          <div v-for="(msg, index) in chatMessages" :key="index" class="chat-bubble">
+            <span class="chat-user">{{ msg.sender }}:</span>
+            <span class="chat-text">{{ msg.content }}</span>
+          </div>
         </div>
-
-        <div class="tags-list">
-          <span
-              v-for="tag in splitTags(video.tags)"
-              :key="tag"
-              class="tag-item"
-          >
-            #{{ tag }}
-          </span>
+        <div class="chat-input-wrapper">
+          <input
+              v-model="chatInput"
+              @keyup.enter="sendChatMessage"
+              placeholder="Say something..."
+          />
+          <button @click="sendChatMessage"><i class="fas fa-paper-plane"></i></button>
         </div>
+        <p v-if="chatError" class="chat-error-message">{{ chatError }}</p>
       </div>
 
-      <div class="comment-form">
-        <input
-            v-model="newComment"
-            placeholder="Add a comment..."
-            @keyup.enter="addComment"
-        />
-        <button @click="addComment" class="comment-submit-btn">Comment</button>
-      </div>
-      <p v-if="commentError" class="error-message">{{ commentError }}</p>
-      <div class="comments-section">
-        <p class="comment-count">{{ commentCount }} comments</p>
-
-        <div v-for="c in comments" :key="c.id" class="comment">
-          <strong>{{ c.authorUsername }}</strong>
-          <p>{{ c.content }}</p>
-          <span class="comment-date">{{ formatDate(c.createdAt) }}</span>
-        </div>
-      </div>
     </div>
   </div>
 </template>
 
+
+
 <script>
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, nextTick } from "vue";
 import { useRoute } from "vue-router";
 import axios from "axios";
 import { useAuthStore } from "@/stores/auth";
+import SockJS from "sockjs-client";
+import Stomp from 'stompjs';
 
 export default {
   setup() {
@@ -94,6 +120,13 @@ export default {
     const pageSize = ref(5);
     const hasMoreComments = ref(true);
     const loadingComments = ref(false);
+    const chatWindow = ref(null);
+    const chatError = ref("");
+
+    //za chat streaming
+    const chatMessages = ref([]);
+    const chatInput = ref("");
+    let stompClient = null;
 
     const splitTags = (tagsString) => {
       if (!tagsString) return [];
@@ -102,6 +135,63 @@ export default {
     };
 
     const videoId = route.params.id;
+
+    // --------CHAT STREAMING--------
+    const connectToChat = () => {
+      // Povezujemo se na endpoint koji si definisao u WebSocketConfig (/socket)
+      const socket = new SockJS("http://localhost:8080/socket");
+      stompClient = Stomp.over(socket);
+
+      stompClient.connect({}, (frame) => {
+        console.log("Connected to chat: " + frame);
+
+        // Pretplata na topic za specifican video
+        stompClient.subscribe(`/topic/chat/${videoId}`, (sdkEvent) => {
+          onMessageReceived(sdkEvent);
+        });
+      }, (error) => {
+        console.error("Socket error:", error);
+      });
+    };
+
+    const onMessageReceived = (payload) => {
+      const message = JSON.parse(payload.body);
+      chatMessages.value.push(message);
+
+      // Auto-scroll na dno
+      nextTick(() => {
+        if (chatWindow.value) {
+          chatWindow.value.scrollTop = chatWindow.value.scrollHeight;
+        }
+      });
+    };
+
+    const sendChatMessage = () => {
+      //  Provera da li je korisnik ulogovan
+      chatError.value =  "";
+      const currentUser = auth.user;
+      const username = currentUser.username
+      if (!auth.token || !username) {
+        chatError.value = "You must be logged in to participate in the chat.";
+        setTimeout(() => { chatError.value = "" }, 3000);
+        return;
+      }
+      if (chatInput.value.trim() && stompClient && stompClient.connected) {
+        const chatMessage = {
+          videoId: videoId,
+          sender: username,
+          content: chatInput.value,
+          timestamp: new Date()
+        };
+
+        // Slanje na @MessageMapping("/chat.send/{videoId}")
+        console.log("Slanje poruke:", chatMessage);
+        stompClient.send(`/app/chat.send/${videoId}`, {}, JSON.stringify(chatMessage));
+        chatInput.value = "";
+        chatError.value = ""; // Resetuj grešku ako je postojala
+      }
+    };
+    //---------------------------------
 
     const loadVideo = async () => {
       const res = await axios.get(`http://localhost:8080/api/videoPosts/${videoId}`);
@@ -229,10 +319,16 @@ const addComment = async () => {
       await loadVideo();
       await loadComments();
       window.addEventListener('scroll', handleScroll);
+      if (video.value.isStreaming) { //STREAMING CHAT DOZVOLJEN SAMO KADA JE VIDEO U STREAM MODU
+        connectToChat();
+      }
     });
 
     onUnmounted(() => {
       window.removeEventListener('scroll', handleScroll);
+      if (stompClient !== null) {
+        stompClient.disconnect();
+      }
     });
 
     return {
@@ -251,6 +347,11 @@ const addComment = async () => {
       addComment,
       formatDate,
       splitTags,
+      chatMessages,
+      chatInput,
+      chatWindow,
+      sendChatMessage,
+      chatError,
     };
   },
 };
@@ -468,6 +569,90 @@ video {
   margin: 10px 0 20px 0;
   font-size: 0.9em;
   font-weight: 500;
+}
+
+.main-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1300px;
+  margin: 0 auto;
+}
+.streaming-layout {
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.video-content { flex: 3; min-width: 0; } /* Video zauzima više mesta */
+
+.chat-sidebar {
+  flex: 1;
+  min-width: 350px;
+  max-width: 400px;
+  height: 600px; /* Fiksna visina chat-a */
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 20px; /* Chat prati skrol */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+
+.chat-header {
+  padding: 15px;
+  border-bottom: 1px solid #eee;
+  font-weight: bold;
+  text-align: center;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background-color: #fcfcfc;
+}
+
+.chat-bubble {
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+.chat-user {
+  font-weight: 700;
+  color: #555;
+  margin-right: 8px;
+}
+
+.chat-text {
+  color: #333;
+}
+
+.chat-input-wrapper {
+  padding: 15px;
+  border-top: 1px solid #eee;
+  display: flex;
+  gap: 10px;
+}
+
+.chat-input-wrapper input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  outline: none;
+}
+
+.chat-input-wrapper button {
+  background: none;
+  border: none;
+  color: #065fd4;
+  font-size: 1.2rem;
+  cursor: pointer;
 }
 </style>
 

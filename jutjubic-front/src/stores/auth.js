@@ -109,6 +109,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (token.value) {
         try {
             const decoded = jwtDecode(token.value);
+            console.log("Sadržaj JWT tokena:", decoded);  //DEBUG
             user.value = { email: decoded.sub }; // sub = email iz JWT
             axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`;
         } catch (err) {
@@ -140,7 +141,11 @@ export const useAuthStore = defineStore('auth', () => {
         try {
             const response = await axios.post('/auth/login', formData);
             token.value = response.data.token;
-            user.value = { email: formData.email };
+            const decoded = jwtDecode(token.value);
+            user.value = {
+                email: decoded.sub,
+                username: decoded.username || decoded.sub // Ako nema username, koristi email
+            };
             localStorage.setItem('token', token.value);
             axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`;
             return true;

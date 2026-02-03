@@ -47,6 +47,7 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/users/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/map/**").permitAll() //dozvoli mapu
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/map/**").permitAll() // POST map tiles
+                        .requestMatchers("/socket/**").permitAll()  // omogucava web socket handshake
                         .anyRequest().authenticated() // sve ostalo zahteva autentifikaciju
                 )
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, userDetailsService),
