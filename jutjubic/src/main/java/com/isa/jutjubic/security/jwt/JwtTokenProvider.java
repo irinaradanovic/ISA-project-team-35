@@ -1,5 +1,6 @@
 package com.isa.jutjubic.security.jwt;
 
+import com.isa.jutjubic.security.model.UserPrincipal;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.security.core.Authentication;
@@ -16,8 +17,10 @@ public class JwtTokenProvider {
 
     public String generateToken(Authentication authentication) {
 
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
         return Jwts.builder()
                 .setSubject(authentication.getName()) // email
+                .claim("username", userPrincipal.getActualUsername())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expirationMs))
                 .signWith(key)

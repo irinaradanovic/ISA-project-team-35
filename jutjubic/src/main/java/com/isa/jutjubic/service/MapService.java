@@ -42,7 +42,7 @@ public class MapService {
                     .findFirst();
 
             // Ako tile NE POSTOJI u bazi (isEmpty) ili je videoCount 0,
-            // to znaci da tamo nema videa. PRESKOČI UPIT KA BAZI.
+            // to znaci da tamo nema videa. PRESKOCI UPIT KA BAZI.
             if (currentTile.isEmpty() || currentTile.get().getVideoCount() == 0) {
                 result.add(new TileVideoDto(tileId, new ArrayList<>()));
                 continue;
@@ -91,6 +91,7 @@ public class MapService {
         dto.setCommentCount(post.getCommentCount());
         dto.setViewCount(post.getViewCount());
         dto.setOwnerId(post.getOwner().getId());
+        dto.setStreaming(post.isStreaming());
         return dto;
     }
 }

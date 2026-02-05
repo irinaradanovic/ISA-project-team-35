@@ -1,27 +1,34 @@
 <template>
   <div class="home">
-    <!-- Header sa login/register -->
-    <!--header class="home-header">
-      <h1 class="logo"></h1>
-    </header>
 
-    <div class="auth-buttons">
+    <!-- Streaming videos-->
+    <div v-if="streamingVideos.length > 0" class="streaming-shelf">
+      <h3 class="section-header live-title">
+        <span class="live-dot"></span> Currently Streaming
+      </h3>
 
-        <router-link to="/map" class="auth-btn">
-          📍 Map
-        </router-link>
+      <div class="horizontal-scroll-container">
+        <button class="scroll-btn left" @click="scrollShelf(-1)">&#10094;</button>
 
-        <template v-if="auth.token">
-          <router-link to="/my-profile" class="auth-btn">My Profile</router-link>
-          <router-link to="/create-post" class="auth-btn">Create Post</router-link>
-          <button @click="handleLogout" class="auth-btn logout-btn">Logout</button>
-        </template>
-        <template v-else>
-          <router-link to="/login" class="auth-btn">Login</router-link>
-          <router-link to="/register" class="auth-btn">Register</router-link>
-        </template>
+        <div class="shelf-content" ref="shelf">
+          <article v-for="video in streamingVideos" :key="video.id" class="streaming-card">
+            <router-link :to="`/video/${video.id}`" class="shelf-thumbnail">
+              <img
+                  class="thumbnail-image"
+                  :src="thumbnailUrl(video)"
+                  :alt="video.title"/>
+              <span class="live-badge">LIVE</span>
+            </router-link>
+            <div class="shelf-info">
+              <router-link :to="`/video/${video.id}`" class="video-title">{{ video.title }}</router-link>
+              <span class="channel-name">{{ video.ownerUsername }}</span>
+            </div>
+          </article>
+        </div>
+
+        <button class="scroll-btn right" @click="scrollShelf(1)">&#10095;</button>
       </div>
-      -->
+    </div>
 
 
     <!-- Videos -->
@@ -219,6 +226,39 @@ body {
   font-family: inherit;
   font-size: inherit;
 }
+
+
+.streaming-shelf { margin: 20px; position: relative; }
+.live-title { color: #cc0000; display: flex; align-items: center; gap: 8px; }
+.live-dot { width: 10px; height: 10px; background: red; border-radius: 50%;  }
+
+.horizontal-scroll-container { display: flex; align-items: center; position: relative; }
+.shelf-content {
+  display: flex;
+  gap: 15px;
+  overflow-x: hidden; /* Skrivamo scrollbar jer koristimo dugmad */
+  scroll-behavior: smooth;
+  padding: 10px 0;
+}
+
+.streaming-card { min-width: 220px; width: 220px; }
+.shelf-thumbnail { position: relative; display: block; border-radius: 8px; overflow: hidden; aspect-ratio: 16/9; }
+.live-badge { position: absolute; top: 5px; left: 5px; background: red; color: white; padding: 2px 6px; font-size: 0.7rem; font-weight: bold; border-radius: 3px; }
+
+.scroll-btn {
+  background: rgba(255,255,255,0.9);
+  border: 1px solid #ddd;
+  border-radius: 50%;
+  width: 40px; height: 40px;
+  cursor: pointer;
+  position: absolute;
+  z-index: 10;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+.scroll-btn.left { left: -20px; }
+.scroll-btn.right { right: -20px; }
+
+@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 </style>
 
 <script>
@@ -242,14 +282,17 @@ export default {
     const columnsPerRow = ref(4);
     const rowsPerSection = ref(2);
 
+    const shelf = ref(null);
+
     const videosPerSection = computed(() => {
       return columnsPerRow.value * rowsPerSection.value;
     });
 
     const videoSections = computed(() => {
       const sections = [];
-      for (let i = 0; i < videos.value.length; i += videosPerSection.value) {
-        sections.push(videos.value.slice(i, i + videosPerSection.value));
+      const sourceVideos = nonStreamingVideos.value;   //prikazati samo non streaming videe ispod streaming videa
+      for (let i = 0; i < sourceVideos.length; i += videosPerSection.value) {
+        sections.push(sourceVideos.slice(i, i + videosPerSection.value));
       }
       return sections;
     });
@@ -340,6 +383,22 @@ export default {
       return `http://localhost:8080/api/videoPosts/${video.id}/thumbnail`;
     };
 
+    // Filtriraj videe koji su u streaming modu
+    const streamingVideos = computed(() => {
+      return videos.value.filter(v => v.isStreaming);
+    });
+
+    const nonStreamingVideos = computed(() => {
+      return videos.value.filter(v => !v.isStreaming);
+    });
+
+    const scrollShelf = (direction) => {
+      if (shelf.value) {
+        const scrollAmount = 300;
+        shelf.value.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
+      }
+    };
+
     onMounted(() => {
       loadPage(0);
       window.addEventListener('scroll', handleScroll);
@@ -360,7 +419,10 @@ export default {
       hasMore,
       handleLogout,
       formatDate,
-      thumbnailUrl
+      thumbnailUrl,
+      streamingVideos,
+      scrollShelf,
+      shelf
     };
   }
 };
