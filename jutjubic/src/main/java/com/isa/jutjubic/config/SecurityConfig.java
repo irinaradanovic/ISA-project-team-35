@@ -91,19 +91,4 @@ public class SecurityConfig {
         };
     }
 
-  /*  @Bean
-    public WebMvcConfigurer corsConfigurer() {
-        return new WebMvcConfigurer() {
-            @Override
-            public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/**")
-                        .allowedOrigins("http://localhost:5173") // front
-                        .allowedHeaders("*")
-                        //.allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                        .allowedMethods("*")
-                        .allowCredentials(true);
-            }
-        };
-    } */
-
 }
