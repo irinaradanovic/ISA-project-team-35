@@ -406,7 +406,7 @@ export default {
       if (!confirmed) return;
 
       try {
-        const res = await axios.post('http://localhost:8080/api/videoPosts', formData, {
+        const res = await axios.post('http://localhost/api/videoPosts', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
 

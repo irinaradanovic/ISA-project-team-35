@@ -4,7 +4,7 @@ import axios from 'axios';
 import jwt_decode from "jwt-decode";
 
 // Axios base URL za backend
-axios.defaults.baseURL = 'http://localhost:8080/api';
+axios.defaults.baseURL = 'http://localhost/api';
 
 export const useAuthStore = defineStore('auth', () => {
     const user = ref(null);        // čuva podatke o korisniku
@@ -96,7 +96,7 @@ import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
  // npm install jwt-decode
 
-axios.defaults.baseURL = 'http://localhost:8080/api';
+axios.defaults.baseURL = 'http://localhost/api';
 
 export const useAuthStore = defineStore('auth', () => {
     const token = ref(localStorage.getItem('token') || null);

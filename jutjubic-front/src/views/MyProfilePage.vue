@@ -59,7 +59,7 @@
            @click="goToVideo(v.id)">
 
         <img
-            :src="`http://localhost:8080/api/videoPosts/${v.id}/thumbnail`"
+            :src="`http://localhost/api/videoPosts/${v.id}/thumbnail`"
             class="thumb"
         >
 
@@ -102,7 +102,7 @@ const edit = reactive({
 
 const loadProfile = async () => {
   try {
-    const { data } = await axios.get('http://localhost:8080/api/users/current-user');
+    const { data } = await axios.get('http://localhost/api/users/current-user');
     user.value = data;
 
     edit.username = data.username;
@@ -117,7 +117,7 @@ const loadProfile = async () => {
 
 const loadVideos = async () => {
   try {
-    const { data } = await axios.get('http://localhost:8080/api/videoPosts/my');
+    const { data } = await axios.get('http://localhost/api/videoPosts/my');
     videos.value = data;
   } catch (e) {
     console.error('Failed to load videos', e);
@@ -126,7 +126,7 @@ const loadVideos = async () => {
 
 const saveEdit = async () => {
   try {
-    await axios.put('http://localhost:8080/api/users/current-user', edit);
+    await axios.put('http://localhost/api/users/current-user', edit);
     editing.value = false;
     await loadProfile();
     alert('Profile updated!');
@@ -139,7 +139,7 @@ const deleteVideo = async (id) => {
   if (!confirm('Are you sure you want to delete this video?')) return;
 
   try {
-    await axios.delete(`http://localhost:8080/api/videoPosts/${id}`);
+    await axios.delete(`http://localhost/api/videoPosts/${id}`);
     videos.value = videos.value.filter(v => v.id !== id);
     alert('Video deleted!');
   } catch (e) {

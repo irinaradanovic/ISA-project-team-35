@@ -11,11 +11,17 @@ import com.isa.jutjubic.security.utils.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import javax.naming.ServiceUnavailableException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -193,7 +199,7 @@ public class VideoPostService {
         //postRepository.delete(post);
     }
 
-
+    @Retryable(retryFor = { DataAccessResourceFailureException.class }, maxAttempts = 2, backoff = @Backoff(delay = 3000)) //dodato za 3.11
     public VideoPostDto getById(Integer Id){
         VideoPost post =  postRepository.findByIdWithOwner(Id).orElseThrow(() -> new NoSuchElementException("VideoPost not found with id " + Id));
         return mapToDto(post);
@@ -205,12 +211,19 @@ public class VideoPostService {
         return fileStorageService.loadThumbnail(path);   //KESIRANJE IZVRSENO FILE STORAGE SERVICE
     }
 
+    @Retryable(retryFor = { DataAccessResourceFailureException.class }, maxAttempts = 2, backoff = @Backoff(delay = 3000))
     @Transactional(readOnly = true)
     public Page<VideoPostDto> getLatestVideos(Pageable pageable) {
         return postRepository.findAllByOrderByCreatedAtDesc(pageable)
                 .map(this::mapToDto);
     }
 
+    //dodato za 3.11
+    @Retryable(
+            retryFor = { DataAccessResourceFailureException.class },  //greska pri citanju baze
+            maxAttempts = 2,                                          //max broj pokusaja
+            backoff = @Backoff(delay = 3000)                          //sacekaj 3 skeunde
+    )
     public void incrementViews(Integer videoId) {
         int updated = postRepository.incrementViews(videoId);
         if (updated == 0) {
@@ -227,5 +240,17 @@ public class VideoPostService {
         videos.sort(Comparator.comparing(VideoPost::getCreatedAt).reversed());
 
         return videos.stream().map(this::mapToDto).toList();
+    }
+
+    //ako je proslo 2 pokusaja, 6 sekundi
+    @Recover
+    public VideoPostDto recoverGetById(DataAccessResourceFailureException e, Integer id) {
+        System.out.println("[RECOVER] getById failed for id=" + id + ": " + e.getMessage());
+        throw new RuntimeException("Baza podataka je trenutno nedostupna.");
+    }
+
+    @Recover
+    public void recoverIncrementViews(DataAccessResourceFailureException e, Integer videoId) {
+        System.out.println("[RECOVER] incrementViews failed for videoId=" + videoId + " - preskačemo");
     }
 }

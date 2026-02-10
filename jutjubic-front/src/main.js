@@ -8,7 +8,7 @@ import './assets/global.css'
 import 'leaflet/dist/leaflet.css' // za prikaz mape
 
 // Podesimo osnovni URL za backend
-axios.defaults.baseURL = 'http://localhost:8080/api'
+axios.defaults.baseURL = 'http://localhost/api'
 
 // Kreiramo aplikaciju
 const app = createApp(App)
