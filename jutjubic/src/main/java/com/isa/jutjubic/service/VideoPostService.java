@@ -25,6 +25,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class VideoPostService {
@@ -46,6 +48,9 @@ public class VideoPostService {
 
     @Autowired
     private GeocodingService geocodingService;
+
+    @Autowired
+    private TranscodingProducer transcodingProducer;
 
     public VideoPostDto mapToDto(VideoPost post) {
         VideoPostDto dto = new VideoPostDto();
@@ -70,89 +75,94 @@ public class VideoPostService {
         return dto;
     }
 
-    @Transactional(rollbackFor = Exception.class)
-    public VideoPostDto createPost(VideoPostUploadDto dto) throws IOException {
-        if (dto.getVideo().getSize() > 200 * 1024 * 1024) {
-            throw new IOException("Video file too large (max 200MB)");
-        }
-        if (!dto.getVideo().getContentType().equals("video/mp4")) {
-            throw new IllegalArgumentException("Only MP4 videos are allowed");
-        }
-        if (dto.getThumbnail() == null || dto.getThumbnail().isEmpty()) {
-            throw new IllegalArgumentException("Thumbnail is required");
-        }
-        if (dto.getTags() == null || dto.getTags().isEmpty()) {
-            throw new IllegalArgumentException("At least one tag is required");
-        }
-
-        long startTime = System.currentTimeMillis();
-        long timeoutMillis = 10_000; // 10 sekundi
-
-        String videoPath = null;
-        String thumbnailPath = null;
-
-        try {
-            thumbnailPath = fileStorageService.saveFile(dto.getThumbnail(), "thumbnails");
-
-            // proveri da li je proslo više od timeout-a
-            if (System.currentTimeMillis() - startTime > timeoutMillis) {
-                throw new IOException("Upload timeout - thumbnail upload took too long");
-            }
-
-            videoPath = fileStorageService.saveFile(dto.getVideo(), "videos");
-
-            // proveri ponovo
-            if (System.currentTimeMillis() - startTime > timeoutMillis) {
-                throw new IOException("Upload timeout - video upload took too long");
-            }
-
-            Long ownerId = SecurityUtils.getCurrentUserId();  //pronalazimo ulogovanog korisnika
-            User owner = userRepository.findById(ownerId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-
-            VideoPost post = new VideoPost();
-            post.setTitle(dto.getTitle());
-            post.setDescription(dto.getDescription());
-            post.setTags(dto.getTags());
-            post.setThumbnailPath(thumbnailPath);
-            post.setVideoPath(videoPath);
-            post.setCreatedAt(LocalDateTime.now());
-            post.setOwner(owner);
-            GeoLocation loc = new GeoLocation();
-
-                 // Ako frontend NIJE poslao koordinate, tek onda zovi API (fallback)
-            if (dto.getLatitude() == null || dto.getLongitude() == null) {
-                if (dto.getAddress() != null && !dto.getAddress().isBlank()) {
-                    geocodingService.fillLocationData(dto, loc);
-                }
-            } else {
-                // Ako je frontend već odradio posao, samo prepisi vrednosti
-                loc.setCity(dto.getCity());
-                loc.setCountry(dto.getCountry());
-                loc.setLatitude(dto.getLatitude());
-                loc.setLongitude(dto.getLongitude());
-                loc.setAddress(dto.getAddress());
-            }
-
-            post.setLocation(loc);
-
-
-            postRepository.save(post);
-
-            // [S2] dodato za mapu 3.18:
-            if (post.getLocation() != null) {
-                mapTileService.updateTileForNewVideo(post);
-            }
-
-            return mapToDto(post);
-
-        } catch (IOException e) {
-            // rollback fajlova ako upload ne uspe
-            if (thumbnailPath != null) fileStorageService.deleteFile(thumbnailPath);
-            if (videoPath != null) fileStorageService.deleteFile(videoPath);
-            throw e;
-        }
+@Transactional(rollbackFor = Exception.class)
+public VideoPostDto createPost(VideoPostUploadDto dto) throws IOException {
+    if (dto.getVideo().getSize() > 200 * 1024 * 1024) {
+        throw new IOException("Video file too large (max 200MB)");
     }
+    if (!dto.getVideo().getContentType().equals("video/mp4")) {
+        throw new IllegalArgumentException("Only MP4 videos are allowed");
+    }
+    if (dto.getThumbnail() == null || dto.getThumbnail().isEmpty()) {
+        throw new IllegalArgumentException("Thumbnail is required");
+    }
+    if (dto.getTags() == null || dto.getTags().isEmpty()) {
+        throw new IllegalArgumentException("At least one tag is required");
+    }
+
+    long startTime = System.currentTimeMillis();
+    long timeoutMillis = 10_000; // 10 sekundi
+
+    String videoPath = null;
+    String thumbnailPath = null;
+
+    try {
+        thumbnailPath = fileStorageService.saveFile(dto.getThumbnail(), "thumbnails");
+
+        if (System.currentTimeMillis() - startTime > timeoutMillis) {
+            throw new IOException("Upload timeout - thumbnail upload took too long");
+        }
+
+        videoPath = fileStorageService.saveFile(dto.getVideo(), "videos");
+
+        if (System.currentTimeMillis() - startTime > timeoutMillis) {
+            throw new IOException("Upload timeout - video upload took too long");
+        }
+
+        Long ownerId = SecurityUtils.getCurrentUserId();
+        User owner = userRepository.findById(ownerId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        VideoPost post = new VideoPost();
+        post.setTitle(dto.getTitle());
+        post.setDescription(dto.getDescription());
+        post.setTags(dto.getTags());
+        post.setThumbnailPath(thumbnailPath);
+        post.setVideoPath(videoPath);
+        post.setCreatedAt(LocalDateTime.now());
+        post.setOwner(owner);
+        GeoLocation loc = new GeoLocation();
+
+        if (dto.getLatitude() == null || dto.getLongitude() == null) {
+            if (dto.getAddress() != null && !dto.getAddress().isBlank()) {
+                geocodingService.fillLocationData(dto, loc);
+            }
+        } else {
+            loc.setCity(dto.getCity());
+            loc.setCountry(dto.getCountry());
+            loc.setLatitude(dto.getLatitude());
+            loc.setLongitude(dto.getLongitude());
+            loc.setAddress(dto.getAddress());
+        }
+
+        post.setLocation(loc);
+        post.setStatus(VideoPost.VideoStatus.PENDING);
+        postRepository.save(post);
+
+        String filename = Paths.get(videoPath).getFileName().toString();
+        String outputPath = Paths.get("uploads", "videos-transcoded", post.getId() + "_" + filename).toString();
+
+        TransactionSynchronizationManager.registerSynchronization(
+            new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    transcodingProducer.enqueue(post.getId(), post.getVideoPath(), outputPath);
+                }
+            }
+        );
+
+        if (post.getLocation() != null) {
+            mapTileService.updateTileForNewVideo(post);
+        }
+
+        return mapToDto(post);
+
+    } catch (IOException e) {
+        if (thumbnailPath != null) fileStorageService.deleteFile(thumbnailPath);
+        if (videoPath != null) fileStorageService.deleteFile(videoPath);
+        throw e;
+    }
+}
 
     @Transactional
     public void deletePost(Integer id) throws IOException {

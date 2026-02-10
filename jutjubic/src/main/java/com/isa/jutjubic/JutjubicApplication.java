@@ -1,5 +1,6 @@
 package com.isa.jutjubic;
 
+import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -10,6 +11,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @EnableScheduling // za scheduling preracunavanja tilesa za mapu
 @EnableCaching
+@EnableRabbit
 @SpringBootApplication
 public class JutjubicApplication {
 

@@ -58,5 +58,22 @@ public interface VideoPostRepository extends JpaRepository<VideoPost, Integer> {
             @Param("minLng") double minLng,
             @Param("maxLng") double maxLng
     );
+    @Modifying
+    @Transactional
+    @Query("UPDATE VideoPost v SET v.status = :status WHERE v.id = :id")
+    int updateStatus(@Param("id") Integer id,
+                     @Param("status") VideoPost.VideoStatus status);
 
+    @Modifying
+    @Transactional
+    @Query("UPDATE VideoPost v SET v.videoPath = :path WHERE v.id = :id")
+    int updateVideoPath(@Param("id") Integer id,
+                        @Param("path") String path);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE VideoPost v SET v.status = :newStatus WHERE v.id = :id AND v.status = :expected")
+    int updateStatusIfCurrent(@Param("id") Integer id,
+                              @Param("expected") VideoPost.VideoStatus expected,
+                              @Param("newStatus") VideoPost.VideoStatus newStatus);
 }
