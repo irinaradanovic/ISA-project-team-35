@@ -139,7 +139,7 @@ export default {
     // --------CHAT STREAMING--------
     const connectToChat = () => {
       // Povezujemo se na endpoint koji si definisao u WebSocketConfig (/socket)
-      const socket = new SockJS("http://localhost:8080/socket");
+      const socket = new SockJS("http://localhost/socket");
       stompClient = Stomp.over(socket);
 
       stompClient.connect({}, (frame) => {
@@ -194,16 +194,16 @@ export default {
     //---------------------------------
 
     const loadVideo = async () => {
-      const res = await axios.get(`http://localhost:8080/api/videoPosts/${videoId}`);
+      const res = await axios.get(`http://localhost/api/videoPosts/${videoId}`);
       video.value = res.data;
-      videoUrl.value = `http://localhost:8080/${res.data.videoPath.replace(/\\/g, '/')}`;
-      thumbnailUrl.value = `http://localhost:8080/api/videoPosts/${videoId}/thumbnail`;
+      videoUrl.value = `http://localhost/${res.data.videoPath.replace(/\\/g, '/')}`;
+      thumbnailUrl.value = `http://localhost/api/videoPosts/${videoId}/thumbnail`;
       likeCount.value = res.data.likeCount;
       viewCount.value = res.data.viewCount;
       commentCount.value = res.data.commentCount;
 
    try {
-          const likedRes = await axios.get(`http://localhost:8080/api/videoPosts/${videoId}/liked`);
+          const likedRes = await axios.get(`http://localhost/api/videoPosts/${videoId}/liked`);
           liked.value = likedRes.data;
         } catch (err) {
           liked.value = false;
@@ -215,7 +215,7 @@ export default {
       console.log('Loading comments - page:', currentPage.value, 'append:', append);
       loadingComments.value = true;
       try {
-        const res = await axios.get(`http://localhost:8080/api/comments/${videoId}/comments`, {
+        const res = await axios.get(`http://localhost/api/comments/${videoId}/comments`, {
           params: {
             page: currentPage.value,
             size: pageSize.value
@@ -258,7 +258,7 @@ export default {
       }
 
     try {
-      const res = await axios.post(`http://localhost:8080/api/videoPosts/${videoId}/like`);
+      const res = await axios.post(`http://localhost/api/videoPosts/${videoId}/like`);
       likeCount.value = res.data;
       liked.value = !liked.value;
     } catch (err) {
@@ -282,7 +282,7 @@ const addComment = async () => {
   if (!newComment.value.trim()) return;
 
   try {
-    await axios.post(`http://localhost:8080/api/comments/${videoId}`, { content: newComment.value });
+    await axios.post(`http://localhost/api/comments/${videoId}`, { content: newComment.value });
     currentPage.value = 0;
     hasMoreComments.value = true;
     await loadComments(false);
@@ -303,7 +303,7 @@ const addComment = async () => {
 
     /* const incrementView = async () => {
        try {
-         await axios.post(`http://localhost:8080/api/videoPosts/${videoId}/view`);
+         await axios.post(`http://localhost/api/videoPosts/${videoId}/view`);
        } catch (err) {
          console.error("Error incrementing view count:", err);
        }

@@ -26,7 +26,7 @@
            @click="goToVideo(v.id)">
 
         <img
-            :src="`http://localhost:8080/api/videoPosts/${v.id}/thumbnail`"
+            :src="`http://localhost/api/videoPosts/${v.id}/thumbnail`"
             class="thumb"
         >
 
@@ -57,7 +57,7 @@ const videos = ref([]);
 
 const loadProfile = async (id) => {
   try {
-    const { data } = await axios.get(`http://localhost:8080/api/users/${id}`);
+    const { data } = await axios.get(`http://localhost/api/users/${id}`);
     user.value = data;
   } catch (e) {
     console.error('Profile load failed', e);
@@ -67,7 +67,7 @@ const loadProfile = async (id) => {
 
 const loadVideos = async (id) => {
   try {
-    const { data } = await axios.get(`http://localhost:8080/api/videoPosts/user/${id}`);
+    const { data } = await axios.get(`http://localhost/api/videoPosts/user/${id}`);
     videos.value = data;
   } catch (e) {
     console.error('Failed to load videos', e);

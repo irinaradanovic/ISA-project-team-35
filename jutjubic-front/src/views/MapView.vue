@@ -142,7 +142,7 @@ function renderFromCache(tileIds) {
 
       marker.bindPopup(`
         <div style="min-width: 150px;">
-          <img src="http://localhost:8080/${video.thumbnailPath}" style="width:100%; border-radius:4px;"/>
+          <img src="http://localhost/${video.thumbnailPath}" style="width:100%; border-radius:4px;"/>
           <br><b>${video.title}</b><br>
           <small>${new Date(video.createdAt).toLocaleDateString()}</small><br>
           <button id="go-to-video-${video.id}" style="margin-top:10px; width:100%; cursor:pointer; background:#f00; color:#fff; border:none; padding:5px; border-radius:4px;">Gledaj</button>

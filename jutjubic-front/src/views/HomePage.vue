@@ -321,7 +321,7 @@ export default {
       if (loading.value) return;
       loading.value = true;
       
-      axios.get(`http://localhost:8080/api/videoPosts?page=${page}&size=${pageSize.value}`)
+      axios.get(`http://localhost/api/videoPosts?page=${page}&size=${pageSize.value}`)
         .then(response => {
           const newVideos = response.data.content;
           if (page === 0) {
@@ -378,9 +378,9 @@ export default {
 
     const thumbnailUrl = (video) => {
       if (video.thumbnailPath) {
-        return `http://localhost:8080/${video.thumbnailPath}`;
+        return `http://localhost/${video.thumbnailPath}`;
       }
-      return `http://localhost:8080/api/videoPosts/${video.id}/thumbnail`;
+      return `http://localhost/api/videoPosts/${video.id}/thumbnail`;
     };
 
     // Filtriraj videe koji su u streaming modu
