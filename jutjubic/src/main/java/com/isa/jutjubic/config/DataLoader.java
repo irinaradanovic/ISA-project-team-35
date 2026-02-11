@@ -8,6 +8,7 @@ import com.isa.jutjubic.repository.CommentRepository;
 import com.isa.jutjubic.repository.UserRepository;
 import com.isa.jutjubic.repository.VideoPostRepository;
 import com.isa.jutjubic.service.MapTileService;
+import com.isa.jutjubic.service.TranscodingProducer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
@@ -22,7 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
-
+import java.nio.file.Paths;
 import static java.lang.Math.random;
 
 
@@ -36,6 +37,7 @@ public class DataLoader implements CommandLineRunner {
     private final CommentRepository commentRepository;
     private final PasswordEncoder passwordEncoder;
     private final MapTileService mapTileService;
+    private final TranscodingProducer transcodingProducer;
 
     private String randomTags() {
         List<String> tags = new ArrayList<>(List.of(
@@ -215,7 +217,6 @@ public class DataLoader implements CommandLineRunner {
 
 
     @Override
-    @Transactional
     public void run(String... args) {
 
         // Provera: Ako već imamo korisnike, nemoj raditi ništa
@@ -330,7 +331,7 @@ public class DataLoader implements CommandLineRunner {
                     .commentCount(3)
                     .viewCount(random.nextInt(1000))
                     .build();
-
+            video.setStatus(VideoPost.VideoStatus.PENDING);
             videoBatch.add(video);
 
             for (int j = 1; j <= 3; j++) {
@@ -344,8 +345,15 @@ public class DataLoader implements CommandLineRunner {
 
             // Batch save na svakih 500 videa
             if (i % 500 == 0) {
-                videoPostRepository.saveAll(videoBatch);
+                List<VideoPost> saved = videoPostRepository.saveAllAndFlush(videoBatch);
                 commentRepository.saveAll(commentBatch);
+
+//                for (VideoPost v : saved) {
+//                    String filename = Paths.get(v.getVideoPath()).getFileName().toString();
+//                    String outputPath = Paths.get("uploads", "videos-transcoded", v.getId() + "_" + filename).toString();
+//                    transcodingProducer.enqueue(v.getId(), v.getVideoPath(), outputPath);
+//                }
+
                 videoBatch.clear();
                 commentBatch.clear();
                 System.out.println(i + " videa ubaceno...");
@@ -354,8 +362,14 @@ public class DataLoader implements CommandLineRunner {
 
         // ostatak
         if (!videoBatch.isEmpty()) {
-            videoPostRepository.saveAll(videoBatch);
+            List<VideoPost> saved = videoPostRepository.saveAllAndFlush(videoBatch);
             commentRepository.saveAll(commentBatch);
+
+//            for (VideoPost v : saved) {
+//                String filename = Paths.get(v.getVideoPath()).getFileName().toString();
+//                String outputPath = Paths.get("uploads", "videos-transcoded", v.getId() + "_" + filename).toString();
+//                transcodingProducer.enqueue(v.getId(), v.getVideoPath(), outputPath);
+//            }
         }
 
         System.out.println("Svi test video postovi ubaceni.");
