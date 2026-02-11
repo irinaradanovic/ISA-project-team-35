@@ -16,6 +16,15 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import net.coobird.thumbnailator.Thumbnails;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
+
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.stream.Stream;
 
 
 @Service
@@ -25,6 +34,13 @@ public class FileStorageService {
 
     @Autowired
     private CacheManager cacheManager;
+
+    private static final Logger logger = LoggerFactory.getLogger(FileStorageService.class);
+
+    private static final int THUMBNAIL_MAX_AGE_DAYS = 30;
+    private static final float THUMBNAIL_QUALITY = 0.6f;
+    private static final String THUMBNAILS_DIR = "thumbnails";
+    private static final String THUMBNAILS_COMPRESSED_DIR = "thumbnails-compressed";
 
     public String saveFile(MultipartFile file, String subFolder) throws IOException {
         //  simulacija sporog uploada - samo za testiranje
@@ -71,6 +87,54 @@ public class FileStorageService {
         }
     }
 
+    @Scheduled(cron = "0 * * * * *")
+    public void compressOldThumbnails() {
+        Path thumbnailsDir = rootUploadDir.resolve(THUMBNAILS_DIR);
+        if (!Files.exists(thumbnailsDir)) {
+            return;
+        }
 
+        Path compressedDir = rootUploadDir.resolve(THUMBNAILS_COMPRESSED_DIR);
+        try {
+            Files.createDirectories(compressedDir);
+        } catch (IOException e) {
+            logger.warn("Failed to create compressed thumbnails directory: {}", compressedDir, e);
+            return;
+        }
+
+        Instant cutoff = Instant.now().minus(THUMBNAIL_MAX_AGE_DAYS, ChronoUnit.DAYS);
+
+        try (Stream<Path> stream = Files.list(thumbnailsDir)) {
+            stream.filter(Files::isRegularFile)
+                    .filter(path -> isImageFile(path.getFileName().toString()))
+                    .forEach(path -> {
+                        try {
+                            FileTime lastModified = Files.getLastModifiedTime(path);
+                            if (lastModified.toInstant().isAfter(cutoff)) {
+                                return;
+                            }
+
+                            Path compressedPath = compressedDir.resolve(path.getFileName().toString());
+                            if (Files.exists(compressedPath)) {
+                                return;
+                            }
+
+                            Thumbnails.of(path.toFile())
+                                    .scale(1.0)
+                                    .outputQuality(THUMBNAIL_QUALITY)
+                                    .toFile(compressedPath.toFile());
+                        } catch (IOException e) {
+                            logger.warn("Failed to compress thumbnail: {}", path, e);
+                        }
+                    });
+        } catch (IOException e) {
+            logger.warn("Failed to scan thumbnails directory: {}", thumbnailsDir, e);
+        }
+    }
+
+    private boolean isImageFile(String filename) {
+        String lower = filename.toLowerCase();
+        return lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png");
+    }
 
 }
