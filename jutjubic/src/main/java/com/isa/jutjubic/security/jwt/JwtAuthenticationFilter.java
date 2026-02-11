@@ -29,6 +29,13 @@ public class JwtAuthenticationFilter extends GenericFilter {
             throws IOException, ServletException {
 
         HttpServletRequest httpRequest = (HttpServletRequest) request;
+
+        // 1. AKO JE OPTIONS, PROSLEDI ODMAH (Preflight fix)
+        if ("OPTIONS".equalsIgnoreCase(httpRequest.getMethod())) {
+            chain.doFilter(request, response);
+            return;
+        }
+
         String header = httpRequest.getHeader("Authorization");
 
         //System.out.println("Authorization header: " + header);
