@@ -32,6 +32,23 @@
 
           <p class="description">{{ video.description }}</p>
 
+          <div v-if="!video.isStreaming" class="start-wp-button">
+            <button 
+              v-if="!watchPartyRoomId"
+              class="wp-start-btn primary"
+              @click="createAndStartWatchParty"
+            >
+              <i class="fas fa-users"></i> Start Watch Party
+            </button>
+            <button 
+              v-else
+              class="wp-start-btn success"
+              @click="startWatchParty"
+            >
+              <i class="fas fa-play"></i> Start Watch Party
+            </button>
+          </div>
+
           <div class="extra-info">
             <div v-if="video.city || video.country" class="location-badge">
               <i class="fas fa-map-marker-alt"></i>
@@ -94,7 +111,7 @@
 
 <script>
 import { ref, onMounted, onUnmounted, nextTick } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import axios from "axios";
 import { useAuthStore } from "@/stores/auth";
 import SockJS from "sockjs-client";
@@ -103,6 +120,7 @@ import Stomp from 'stompjs';
 export default {
   setup() {
     const route = useRoute();
+    const router = useRouter();
     const video = ref({});
     const comments = ref([]);
     const likeCount = ref(0);
@@ -127,6 +145,10 @@ export default {
     const chatMessages = ref([]);
     const chatInput = ref("");
     let stompClient = null;
+
+    //za watch party
+    const watchPartyRoomId = ref(route.query.wp || null);
+    const watchPartyError = ref("");
 
     const splitTags = (tagsString) => {
       if (!tagsString) return [];
@@ -300,6 +322,35 @@ const addComment = async () => {
     }
   }
 };
+const createAndStartWatchParty = async () => {
+  watchPartyError.value = "";
+  if (!auth.token) {
+    watchPartyError.value = "You must be logged in to create a watch party.";
+    return;
+  }
+
+  try {
+    const res = await axios.post("/watch-party", {
+      videoId: Number(videoId)
+    });
+    watchPartyRoomId.value = res.data.id;
+
+    router.push({
+      path: `/watch-party/${res.data.id}`
+    });
+  } catch (err) {
+    watchPartyError.value = "Failed to create watch party.";
+  }
+};
+
+const startWatchParty = () => {
+  if (!watchPartyRoomId.value) return;
+
+  router.push({
+    path: `/watch-party/${watchPartyRoomId.value}`
+  });
+};
+
 
     /* const incrementView = async () => {
        try {
@@ -352,6 +403,10 @@ const addComment = async () => {
       chatWindow,
       sendChatMessage,
       chatError,
+      watchPartyRoomId,
+      watchPartyError,
+      createAndStartWatchParty,
+      startWatchParty
     };
   },
 };
