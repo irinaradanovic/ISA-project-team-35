@@ -124,6 +124,14 @@
         </ul>
       </div>
 
+      <div class="form-group">
+        <label>Scheduled display (optional):</label>
+        <small class="hint">Select a date and time if you want to schedule the video for later</small>
+        <input type="datetime-local" v-model="scheduledAt" />
+      </div>
+
+
+
       <!-- ogranicava korisnika da mora da unese ova polja-->
       <button
           type="submit"
@@ -184,8 +192,9 @@ export default {
       locationInput: '',
       filteredLocations: [],
       searchTimeout: null, // Za debounce
-      apiKey: 'pk.5b03a9b9443bea45a4a22ec87c997a55' // token za locationiq
+      apiKey: 'pk.5b03a9b9443bea45a4a22ec87c997a55', // token za locationiq
 
+      scheduledAt: null,  // novo polje za zakazani prikaz
 
 
     };
@@ -385,11 +394,22 @@ export default {
         return;
       }
 
+      if (this.scheduledAt) {
+        const selectedDate = new Date(this.scheduledAt);
+        if (selectedDate < new Date()) {
+          this.message = "Scheduled date must be in the future.";
+          this.success = false;
+          return;
+        }
+      }
+
+
+
       const formData = new FormData();
       formData.append('title', this.title);
       formData.append('description', this.description);
       formData.append('tags', this.selectedTags.join(','));
-
+      formData.append('scheduledAt', this.scheduledAt);
 
       // Ako je korisnik izabrao lokaciju iz liste
       if (this.selectedLocation) {

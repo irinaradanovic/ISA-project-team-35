@@ -5,15 +5,29 @@
       <div class="video-content">
         <div class="video-container">
           <h2>{{ video.title }}</h2>
+
           <p class="username">by {{ video.ownerUsername }}</p>
 
           <div class="video-section">
+            <div v-if="isWaiting" class="scheduled-overlay">
+              <div class="countdown-box">
+                <i class="fas fa-clock"></i>
+                <h3>Video starts in:</h3>
+                <div class="timer">{{ countdownText }}</div>
+                <p>Scheduled for: {{ formatDate(video.scheduledAt) }}</p>
+              </div>
+            </div>
+
             <video
                 v-if="video.videoPath"
+                v-show="!isWaiting"
+                ref="videoPlayer"
                 controls
                 :src="videoUrl"
                 :poster="thumbnailUrl"
+                @play="onManualPlay"
             ></video>
+
 
             <div class="video-meta">
               <div class="like-section">
@@ -115,7 +129,11 @@ export default {
     const videoUrl = ref("");
     const thumbnailUrl = ref("");
     const auth = useAuthStore();
-    
+
+    //za zakazani prikaz
+    const videoPlayer = ref(null);
+
+
     const currentPage = ref(0);
     const pageSize = ref(5);
     const hasMoreComments = ref(true);
@@ -127,6 +145,52 @@ export default {
     const chatMessages = ref([]);
     const chatInput = ref("");
     let stompClient = null;
+
+    //za zakazani režim
+    const isWaiting = ref(false);
+    const countdownText = ref("");
+    let countdownTimer = null;
+
+    const startCountdown = (scheduledDate) => {
+      // 1. Osiguraj se da je scheduledDate ispravan Date objekat
+      const targetDate = new Date(scheduledDate);
+
+      // 2. Odmah očisti stari tajmer ako postoji
+      if (countdownTimer) clearInterval(countdownTimer);
+
+      const updateTimer = () => {
+        const now = new Date();
+        const diff = targetDate.getTime() - now.getTime();
+
+        // 3. Ako je vreme isteklo
+        if (diff <= 0) {
+          isWaiting.value = false;
+          countdownText.value = "00:00:00";
+          clearInterval(countdownTimer);
+          loadVideo(); // Ponovo učitaj video da krene plejer
+          return;
+        }
+
+        // 4. Izračunaj sate, minute i sekunde
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+        // 5. Formatiranje nula (da piše 05:09 umesto 5:9)
+        const hDisplay = hours.toString().padStart(2, '0');
+        const mDisplay = minutes.toString().padStart(2, '0');
+        const sDisplay = seconds.toString().padStart(2, '0');
+
+        // 6. AŽURIRANJE PROMENLJIVE KOJA SE VIDI NA EKRANU
+        countdownText.value = `${hDisplay}:${mDisplay}:${sDisplay}`;
+      };
+
+      // Pokreni odmah jednom da se ne čeka prva sekunda
+      updateTimer();
+      // Postavi interval
+      countdownTimer = setInterval(updateTimer, 1000);
+    };
+
 
     const splitTags = (tagsString) => {
       if (!tagsString) return [];
@@ -193,7 +257,7 @@ export default {
     };
     //---------------------------------
 
-    const loadVideo = async () => {
+    /*const loadVideo = async () => {
       const res = await axios.get(`http://localhost/api/videoPosts/${videoId}`);
       video.value = res.data;
       videoUrl.value = `http://localhost/${res.data.videoPath.replace(/\\/g, '/')}`;
@@ -208,7 +272,91 @@ export default {
         } catch (err) {
           liked.value = false;
         }
+    };*/
+
+    //za zakazani režim
+    const loadVideo = async () => {
+      try {
+        // 1. Resetuj stanje pre učitavanja
+        isWaiting.value = false;
+        if (countdownTimer) clearInterval(countdownTimer);
+
+        // 2. Poziv API-ja
+        const res = await axios.get(`http://localhost/api/videoPosts/${videoId}/play`);
+        const data = res.data;
+        video.value = data;
+
+        // 3. Podešavanje putanja
+        //videoUrl.value = `http://localhost/${data.videoPath.replace(/\\/g, '/')}`;
+        const normalizedPath = data.videoPath.replace(/\\/g, '/');
+        videoUrl.value = `http://localhost/${normalizedPath}`;
+
+
+        thumbnailUrl.value = `http://localhost/api/videoPosts/${videoId}/thumbnail`;
+
+        // 4. Ažuriranje brojača
+        likeCount.value = data.likeCount;
+        viewCount.value = data.viewCount;
+        commentCount.value = data.commentCount;
+
+        // 5. UČITAVANJE KOMENTARA (Ovo je nedostajalo ili bagovalo)
+        currentPage.value = 0;
+        hasMoreComments.value = true;
+        comments.value = [];
+        await loadComments(false);
+
+        // 6. LOGIKA ZA ZAKAZANI PRIKAZ
+
+        const now = new Date().getTime();
+        const scheduledAtTime = data.scheduledAt ? new Date(data.scheduledAt).getTime() : 0;
+
+
+        if (scheduledAtTime > now) {
+          // VIDEO JE U BUDUĆNOSTI
+          isWaiting.value = true;
+          console.log("Video je zakazan za:", new Date(scheduledAtTime).toLocaleString());
+          startCountdown(new Date(scheduledAtTime));
+        } else {
+          // VIDEO JE DOSTUPAN ILI JE STREAM U TOKU
+          isWaiting.value = false;
+
+          nextTick(() => {
+            if (videoPlayer.value) {
+              // Postavi offset ako postoji (za simulaciju striminga)
+              if (data.offsetSeconds > 0) {
+                videoPlayer.value.currentTime = data.offsetSeconds;
+              }
+
+              // Automatski Play (Browseri dozvoljavaju ako je korisnik kliknuo na video u listi)
+              videoPlayer.value.play().catch(err => {
+                console.warn("Autoplay blocked. User must interact with the page first.", err);
+              });
+            }
+          });
+        }
+
+        // 7. Provera lajka
+        if (auth.token) {
+          try {
+            const likedRes = await axios.get(`http://localhost/api/videoPosts/${videoId}/liked`);
+            liked.value = likedRes.data;
+          } catch (err) {
+            liked.value = false;
+          }
+        }
+
+      } catch (err) {
+        console.error("Kritična greška pri učitavanju videa:", err);
+      }
     };
+
+
+
+
+
+
+
+
 
     const loadComments = async (append = false) => {
       if (loadingComments.value || !hasMoreComments.value) return;
@@ -329,6 +477,9 @@ const addComment = async () => {
       if (stompClient !== null) {
         stompClient.disconnect();
       }
+      if (countdownTimer) {
+        clearInterval(countdownTimer);
+      }
     });
 
     return {
@@ -352,6 +503,11 @@ const addComment = async () => {
       chatWindow,
       sendChatMessage,
       chatError,
+      videoPlayer,
+      isWaiting,
+      countdownText,
+      startCountdown
+
     };
   },
 };
@@ -394,6 +550,32 @@ video {
   max-width: 800px;
   display: block;
   background-color: #000;
+}
+
+.scheduled-overlay {
+  width: 100%;
+  aspect-ratio: 16 / 9; /* Da prati dimenzije videa */
+  background: #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.countdown-box i {
+  font-size: 3rem;
+  color: #ff3d00;
+  margin-bottom: 15px;
+}
+
+.timer {
+  font-size: 2.5rem;
+  font-weight: bold;
+  font-family: 'Courier New', Courier, monospace;
+  margin: 10px 0;
+  color: #ff3d00;
 }
 
 .video-meta {

@@ -15,6 +15,7 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +26,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -40,8 +42,22 @@ public class VideoPostController {
     @Autowired
     private VideoPostRepository videoPostRepository;
 
+    @GetMapping("/{id}/play")
+    public ResponseEntity<?> getVideoForPlayback(@PathVariable Integer id) {
+        try {
+            return ResponseEntity.ok(postService.getVideoForPlayback(id));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Video not found.");
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(e.getMessage());
+        }
+    }
 
-   @GetMapping("/{id}")
+
+
+    @GetMapping("/{id}")
     public ResponseEntity<?> getPostById(@PathVariable Integer id) {
        try {
            VideoPostDto post = postService.getById(id);
@@ -67,7 +83,10 @@ public class VideoPostController {
             @RequestParam(required = false) String city,
             @RequestParam(required = false) String country,
             @RequestParam(required = false) Double latitude,
-            @RequestParam(required = false) Double longitude
+            @RequestParam(required = false) Double longitude,
+
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            @RequestParam(required = false) LocalDateTime scheduledAt // za zakazani režim
     ) {
 
             VideoPostUploadDto dto = new VideoPostUploadDto();
@@ -81,6 +100,7 @@ public class VideoPostController {
             dto.setCity(city);
             dto.setLatitude(latitude);
             dto.setLongitude(longitude);
+            dto.setScheduledAt(scheduledAt);
 
             try {
                 VideoPostDto post = postService.createPost(dto);

@@ -3,6 +3,8 @@ package com.isa.jutjubic.dto;
 import lombok.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
+
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -22,5 +24,7 @@ public class VideoPostUploadDto {
     private Double longitude;
 
     private String address;  //ovo korisnik unosi za lokaciju
+
+    private LocalDateTime scheduledAt; // novo polje za zakazani prikaz
 
 }

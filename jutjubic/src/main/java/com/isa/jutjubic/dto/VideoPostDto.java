@@ -29,6 +29,8 @@ public class VideoPostDto {
     private int commentCount;
     private int viewCount;
 
+    private LocalDateTime scheduledAt; // za zakazani režim
+
     @JsonProperty("isStreaming")  //da u jsonu ispisuje isStreaming umesto streaming
     private boolean isStreaming; // 3.10 dodato
 }

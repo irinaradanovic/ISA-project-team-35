@@ -21,6 +21,16 @@ public interface VideoPostRepository extends JpaRepository<VideoPost, Integer> {
     @EntityGraph(attributePaths = {"owner"})
     Page<VideoPost> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
+    //za zakazani režim
+    @EntityGraph(attributePaths = {"owner"})
+    @Query("""
+    SELECT v FROM VideoPost v
+    WHERE (v.scheduledAt IS NULL OR v.scheduledAt <= :now)
+    ORDER BY v.createdAt DESC
+""")
+    Page<VideoPost> findVisibleVideos(@Param("now") LocalDateTime now, Pageable pageable);
+
+
     @Query("SELECT v.thumbnailPath FROM VideoPost v WHERE v.id = :id")
     Optional<String> findThumbnailPathById(@Param("id") Integer id);
 
@@ -58,6 +68,31 @@ public interface VideoPostRepository extends JpaRepository<VideoPost, Integer> {
             @Param("minLng") double minLng,
             @Param("maxLng") double maxLng
     );
+
+    //za zakazani režim
+    @Query("""
+    SELECT v FROM VideoPost v
+    JOIN FETCH v.owner
+    WHERE (v.scheduledAt IS NULL OR v.scheduledAt <= :now)
+    AND v.location.latitude IS NOT NULL
+    AND v.createdAt >= :from
+    AND v.location.latitude BETWEEN :minLat AND :maxLat
+    AND v.location.longitude BETWEEN :minLng AND :maxLng
+""")
+    List<VideoPost> findVisibleForMap(
+            @Param("now") LocalDateTime now,
+            @Param("from") LocalDateTime from,
+            @Param("minLat") double minLat,
+            @Param("maxLat") double maxLat,
+            @Param("minLng") double minLng,
+            @Param("maxLng") double maxLng
+    );
+
+    @Query("SELECT v FROM VideoPost v JOIN FETCH v.owner WHERE v.id = :id")
+    Optional<VideoPost> findByIdForPlayback(@Param("id") Integer id);
+
+
+
     @Modifying
     @Transactional
     @Query("UPDATE VideoPost v SET v.status = :status WHERE v.id = :id")
