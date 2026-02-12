@@ -1,6 +1,6 @@
 package com.isa.jutjubic.service;
 
-import com.isa.jutjubic.dto.VideoPlaybackResponse;
+
 import com.isa.jutjubic.dto.VideoPostDto;
 import com.isa.jutjubic.dto.VideoPostUploadDto;
 import com.isa.jutjubic.model.GeoLocation;
@@ -264,7 +264,7 @@ public VideoPostDto createPost(VideoPostUploadDto dto) throws IOException {
                 .getSeconds();
     }
 
-    public VideoPlaybackResponse getVideoForPlayback(Integer id) {
+    /*public VideoPlaybackResponse getVideoForPlayback(Integer id) {
 
         VideoPost post = postRepository.findByIdForPlayback(id)
                 .orElseThrow(() -> new NoSuchElementException("Video not found"));
@@ -276,8 +276,60 @@ public VideoPostDto createPost(VideoPostUploadDto dto) throws IOException {
                 post.getId(),
                 post.getVideoPath(),
                 offsetSeconds,
-                post.getScheduledAt() // PROSLEDI DATUM OVDE
+                post.getScheduledAt(), // PROSLEDI DATUM OVDE
+                post.isStreaming()
         );
+    }*/
+
+    public VideoPostDto getVideoForPlayback(Integer id) {
+        // 1. Dobavljanje entiteta iz baze
+        VideoPost post = postRepository.findByIdForPlayback(id)
+                .orElseThrow(() -> new NoSuchElementException("Video not found"));
+
+        // 2. Izračunavanje offseta (tvoja postojeća logika)
+        long offsetSeconds = calculateStreamingOffsetSeconds(post);
+
+        // 3. Kreiranje DTO-a (ovde prosleđuješ SVE podatke koje front očekuje)
+        VideoPostDto dto = new VideoPostDto();
+        dto.setId(post.getId());
+        dto.setTitle(post.getTitle());
+        dto.setDescription(post.getDescription());
+        dto.setTags(post.getTags());
+        dto.setVideoPath(post.getVideoPath());
+        dto.setThumbnailPath(post.getThumbnailPath());
+        dto.setCreatedAt(post.getCreatedAt());
+        //dto.setCity(post.getCity());
+        //dto.setCountry(post.getCountry());
+        dto.setOwnerUsername(post.getOwner().getUsername()); // Pazi na NullPointer ako owner nije učitan
+        dto.setOwnerId(post.getOwner().getId());
+
+        // KLJUČNO: Ovde puniš brojače koji su ti falili!
+        dto.setLikeCount(post.getLikeCount());
+        dto.setViewCount(post.getViewCount());
+        dto.setCommentCount(post.getCommentCount());
+
+        dto.setScheduledAt(post.getScheduledAt());
+        dto.setStreaming(post.isStreaming());
+
+        // DODAJEMO OFFSET koji si uvela u prethodnom koraku u VideoPostDto
+        dto.setOffsetSeconds(offsetSeconds);
+
+        return dto;
+    }
+
+
+
+    @Transactional
+    public void finalizeStream(Integer id) {
+        VideoPost post = postRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Video not found"));
+
+        // Setujemo streaming na false
+        post.setStreaming(false);
+
+        // Čistimo keš ako je potrebno
+        postRepository.save(post);
+        System.out.println("Video " + id + " je sada zvanično običan video (VOD).");
     }
 
 

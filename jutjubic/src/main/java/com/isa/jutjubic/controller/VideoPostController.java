@@ -55,6 +55,12 @@ public class VideoPostController {
         }
     }
 
+    @PostMapping("/{id}/end-stream")
+    public ResponseEntity<Void> endStream(@PathVariable Integer id) {
+        postService.finalizeStream(id);
+        return ResponseEntity.ok().build();
+    }
+
 
 
     @GetMapping("/{id}")

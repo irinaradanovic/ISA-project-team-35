@@ -26,6 +26,8 @@
                 :src="videoUrl"
                 :poster="thumbnailUrl"
                 @play="onManualPlay"
+                @ended="handleVideoEnded"
+                @timeupdate="checkVideoProgress"
             ></video>
 
 
@@ -150,6 +152,7 @@ export default {
     const isWaiting = ref(false);
     const countdownText = ref("");
     let countdownTimer = null;
+    const isEnding = ref(false);
 
     const startCountdown = (scheduledDate) => {
       // 1. Osiguraj se da je scheduledDate ispravan Date objekat
@@ -168,6 +171,11 @@ export default {
           countdownText.value = "00:00:00";
           clearInterval(countdownTimer);
           loadVideo(); // Ponovo učitaj video da krene plejer
+
+          if (video.value.isStreaming && (!stompClient || !stompClient.connected)) {
+            connectToChat();
+          }
+
           return;
         }
 
@@ -191,6 +199,75 @@ export default {
       countdownTimer = setInterval(updateTimer, 1000);
     };
 
+    const handleVideoEnded = async () => {
+      // AKO JE VEĆ KRENULO GAŠENJE, NE RADI NIŠTA VIŠE
+      if (isEnding.value) return;
+
+
+
+      // Koristimo podatak direktno iz reaktivnog objekta
+      if (video.value && video.value.isStreaming) {
+        isEnding.value = true; // ODMAH POSTAVI NA TRUE
+        console.log("Video je završen. Šaljem sistemsku poruku...");
+
+        // 1. Slanje poruke
+        if (stompClient && stompClient.connected) {
+          const closingMessage = {
+            videoId: video.value.id, // Sigurniji pristup ID-u
+            sender: "SYSTEM",
+            content: "Stream has ended. Converting to video... Thank you for watching!",
+            timestamp: new Date()
+          };
+          stompClient.send(`/app/chat.send/${video.value.id}`, {}, JSON.stringify(closingMessage));
+        }
+
+        // 2. Tajmer za tranziciju
+        setTimeout(async () => {
+          try {
+            console.log("Ažuriram backend status za video:", video.value.id);
+            await axios.post(`http://localhost/api/videoPosts/${video.value.id}/end-stream`);
+
+            // KLJUČNO: Menjamo status koji kontroliše v-if i klase
+            video.value.isStreaming = false;
+
+            // 3. Čistimo socket
+            if (stompClient) {
+              stompClient.disconnect();
+              stompClient = null;
+            }
+
+            // 4. Forsirano učitavanje komentara za VOD mod
+            currentPage.value = 0;
+            hasMoreComments.value = true;
+            comments.value = [];
+            await loadComments(false);
+
+            console.log("Layout uspešno prebačen u VOD mod.");
+          } catch (err) {
+            console.error("Greška pri gašenju streama:", err);
+            // Čak i ako backend fejlira, prebaci UI lokalno da korisnik ne ostane zaglavljen
+            video.value.isStreaming = false;
+          }
+          finally {
+            isEnding.value = false; // Resetuj za svaki slučaj na kraju
+          }
+        }, 7000);
+      }
+    };
+
+    const checkVideoProgress = () => {
+      const player = videoPlayer.value;
+      if (!player) return;
+
+      // Ako je ostalo manje od pola sekunde do kraja, a još uvek smo u isStreaming modu
+      if (player.duration > 0 && (player.duration - player.currentTime < 0.5)) {
+        if (video.value.isStreaming) {
+          console.log("TimeUpdate detektovao kraj videa pre @ended događaja!");
+          handleVideoEnded();
+        }
+      }
+    };
+
 
     const splitTags = (tagsString) => {
       if (!tagsString) return [];
@@ -202,6 +279,7 @@ export default {
 
     // --------CHAT STREAMING--------
     const connectToChat = () => {
+      console.log("Inicijalizacija chata za video:", videoId);
       // Povezujemo se na endpoint koji si definisao u WebSocketConfig (/socket)
       const socket = new SockJS("http://localhost/socket");
       stompClient = Stomp.over(socket);
@@ -322,6 +400,9 @@ export default {
 
           nextTick(() => {
             if (videoPlayer.value) {
+              console.log("Trajanje videa:", videoPlayer.value.duration);
+              console.log("Trenutno vreme (offset):", videoPlayer.value.currentTime);
+
               // Postavi offset ako postoji (za simulaciju striminga)
               if (data.offsetSeconds > 0) {
                 videoPlayer.value.currentTime = data.offsetSeconds;
@@ -464,12 +545,23 @@ const addComment = async () => {
 
     onMounted(async () => {
 
-      await loadVideo();
-      await loadComments();
       window.addEventListener('scroll', handleScroll);
-      if (video.value.isStreaming) { //STREAMING CHAT DOZVOLJEN SAMO KADA JE VIDEO U STREAM MODU
+
+      await loadVideo();
+
+      console.log("Status streaminga nakon loada:", video.value.isStreaming);
+
+      if (video.value.isStreaming) {
+        console.log("Pokrećem konekciju na chat...");
         connectToChat();
       }
+
+      await loadComments();
+      //window.addEventListener('scroll', handleScroll);
+      /*if (video.value.isStreaming) { //STREAMING CHAT DOZVOLJEN SAMO KADA JE VIDEO U STREAM MODU
+        console.log("Video je streaming, povezujem se na chat...");
+        connectToChat();
+      }*/
     });
 
     onUnmounted(() => {
@@ -506,8 +598,10 @@ const addComment = async () => {
       videoPlayer,
       isWaiting,
       countdownText,
-      startCountdown
-
+      startCountdown,
+      handleVideoEnded,
+      checkVideoProgress,
+      isEnding,
     };
   },
 };
@@ -766,6 +860,25 @@ video {
 }
 
 .video-content { flex: 3; min-width: 0; } /* Video zauzima više mesta */
+
+/* Dodaj ovo u <style scoped> */
+.chat-bubble.system-msg {
+  background-color: #fff3e0 !important; /* Svetlo narandžasta */
+  border: 1px solid #ff9800 !important;
+  color: #e65100 !important;
+  padding: 12px !important;
+  margin: 10px 0;
+  border-radius: 8px;
+  font-weight: bold;
+  text-align: center;
+  animation: pulse 1.5s infinite; /* Blago blinkanje da privuče pažnju */
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
 
 .chat-sidebar {
   flex: 1;

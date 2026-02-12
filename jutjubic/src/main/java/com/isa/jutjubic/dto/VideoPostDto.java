@@ -33,5 +33,7 @@ public class VideoPostDto {
 
     @JsonProperty("isStreaming")  //da u jsonu ispisuje isStreaming umesto streaming
     private boolean isStreaming; // 3.10 dodato
+
+    private long offsetSeconds; //3.8
 }
 
