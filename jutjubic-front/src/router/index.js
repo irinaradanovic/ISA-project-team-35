@@ -6,6 +6,7 @@ import MyProfilePage from '@/views/MyProfilePage.vue'
 import LoginView from '@/views/LoginView.vue'
 import RegisterView from '@/views/RegisterView.vue'
 import ProfilePage from '@/views/ProfilePage.vue'
+import WatchPartyRoom from '@/views/WatchPartyView.vue'
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -49,7 +50,14 @@ const router = createRouter({
             path: '/map',
             name: 'Map',
             component: () => import('@/views/MapView.vue')
+        },
+
+        {
+        path: '/watch-party/:id',
+        name: 'WatchPartyRoom',
+        component: WatchPartyRoom
         }
+                
 
     ],
 })
