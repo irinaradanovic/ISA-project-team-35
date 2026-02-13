@@ -103,6 +103,15 @@ export const useAuthStore = defineStore('auth', () => {
     const user = ref(null);
     const error = ref(null);
 
+    const extractUserFromToken = (rawToken) => {
+        const decoded = jwtDecode(rawToken);
+        console.log("Sadržaj JWT tokena:", decoded);
+        return {
+            email: decoded.sub,
+            username: decoded.username || decoded.sub  // fallback na email ako nema username
+        };
+    };
+
     // ==========================
     // INIT USER FROM TOKEN
     // ==========================
@@ -110,7 +119,8 @@ export const useAuthStore = defineStore('auth', () => {
         try {
             const decoded = jwtDecode(token.value);
             console.log("Sadržaj JWT tokena:", decoded);  //DEBUG
-            user.value = { email: decoded.sub }; // sub = email iz JWT
+            //user.value = { email: decoded.sub }; // sub = email iz JWT
+            user.value = extractUserFromToken(token.value);
             axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`;
         } catch (err) {
             console.error('Invalid token:', err);

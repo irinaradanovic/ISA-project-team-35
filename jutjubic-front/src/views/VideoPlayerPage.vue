@@ -5,15 +5,31 @@
       <div class="video-content">
         <div class="video-container">
           <h2>{{ video.title }}</h2>
+
           <p class="username">by {{ video.ownerUsername }}</p>
 
           <div class="video-section">
+            <div v-if="isWaiting" class="scheduled-overlay">
+              <div class="countdown-box">
+                <i class="fas fa-clock"></i>
+                <h3>Video starts in:</h3>
+                <div class="timer">{{ countdownText }}</div>
+                <p>Scheduled for: {{ formatDate(video.scheduledAt) }}</p>
+              </div>
+            </div>
+
             <video
                 v-if="video.videoPath"
+                v-show="!isWaiting"
+                ref="videoPlayer"
                 controls
                 :src="videoUrl"
                 :poster="thumbnailUrl"
+                @play="onManualPlay"
+                @ended="handleVideoEnded"
+                @timeupdate="checkVideoProgress"
             ></video>
+
 
             <div class="video-meta">
               <div class="like-section">
@@ -133,7 +149,11 @@ export default {
     const videoUrl = ref("");
     const thumbnailUrl = ref("");
     const auth = useAuthStore();
-    
+
+    //za zakazani prikaz
+    const videoPlayer = ref(null);
+
+
     const currentPage = ref(0);
     const pageSize = ref(5);
     const hasMoreComments = ref(true);
@@ -146,9 +166,132 @@ export default {
     const chatInput = ref("");
     let stompClient = null;
 
+
     //za watch party
     const watchPartyRoomId = ref(route.query.wp || null);
     const watchPartyError = ref("");
+
+    //za zakazani režim
+    const isWaiting = ref(false);
+    const countdownText = ref("");
+    let countdownTimer = null;
+    const isEnding = ref(false);
+
+    const startCountdown = (scheduledDate) => {
+      // 1. Osiguraj se da je scheduledDate ispravan Date objekat
+      const targetDate = new Date(scheduledDate);
+
+      // 2. Odmah očisti stari tajmer ako postoji
+      if (countdownTimer) clearInterval(countdownTimer);
+
+      const updateTimer = () => {
+        const now = new Date();
+        const diff = targetDate.getTime() - now.getTime();
+
+        // 3. Ako je vreme isteklo
+        if (diff <= 0) {
+          isWaiting.value = false;
+          countdownText.value = "00:00:00";
+          clearInterval(countdownTimer);
+          loadVideo(); // Ponovo učitaj video da krene plejer
+
+          if (video.value.isStreaming && (!stompClient || !stompClient.connected)) {
+            connectToChat();
+          }
+
+          return;
+        }
+
+        // 4. Izračunaj sate, minute i sekunde
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+        // 5. Formatiranje nula (da piše 05:09 umesto 5:9)
+        const hDisplay = hours.toString().padStart(2, '0');
+        const mDisplay = minutes.toString().padStart(2, '0');
+        const sDisplay = seconds.toString().padStart(2, '0');
+
+        // 6. AŽURIRANJE PROMENLJIVE KOJA SE VIDI NA EKRANU
+        countdownText.value = `${hDisplay}:${mDisplay}:${sDisplay}`;
+      };
+
+      // Pokreni odmah jednom da se ne čeka prva sekunda
+      updateTimer();
+      // Postavi interval
+      countdownTimer = setInterval(updateTimer, 1000);
+    };
+
+    const handleVideoEnded = async () => {
+      // AKO JE VEĆ KRENULO GAŠENJE, NE RADI NIŠTA VIŠE
+      if (isEnding.value) return;
+
+
+
+      // Koristimo podatak direktno iz reaktivnog objekta
+      if (video.value && video.value.isStreaming) {
+        isEnding.value = true; // ODMAH POSTAVI NA TRUE
+        console.log("Video je završen. Šaljem sistemsku poruku...");
+
+        // 1. Slanje poruke
+        if (stompClient && stompClient.connected) {
+          const closingMessage = {
+            videoId: video.value.id, // Sigurniji pristup ID-u
+            sender: "SYSTEM",
+            content: "Stream has ended. Converting to video... Thank you for watching!",
+            timestamp: new Date()
+          };
+          stompClient.send(`/app/chat.send/${video.value.id}`, {}, JSON.stringify(closingMessage));
+        }
+
+        // 2. Tajmer za tranziciju
+        setTimeout(async () => {
+          try {
+            console.log("Ažuriram backend status za video:", video.value.id);
+            await axios.post(`http://localhost/api/videoPosts/${video.value.id}/end-stream`);
+
+            // KLJUČNO: Menjamo status koji kontroliše v-if i klase
+            video.value.isStreaming = false;
+
+            // 3. Čistimo socket
+            if (stompClient) {
+              stompClient.disconnect();
+              stompClient = null;
+            }
+
+            // 4. Forsirano učitavanje komentara za VOD mod
+            currentPage.value = 0;
+            hasMoreComments.value = true;
+            comments.value = [];
+            await loadComments(false);
+
+            console.log("Layout uspešno prebačen u VOD mod.");
+          } catch (err) {
+            console.error("Greška pri gašenju streama:", err);
+            // Čak i ako backend fejlira, prebaci UI lokalno da korisnik ne ostane zaglavljen
+            video.value.isStreaming = false;
+          }
+          finally {
+            isEnding.value = false; // Resetuj za svaki slučaj na kraju
+          }
+        }, 5000);
+      }
+    };
+
+    const checkVideoProgress = () => {
+      const player = videoPlayer.value;
+      if (!player) return;
+
+      // Ako je ostalo manje od pola sekunde do kraja, a još uvek smo u isStreaming modu
+      if (player.duration > 0 && (player.duration - player.currentTime < 0.5)) {
+        if (video.value.isStreaming) {
+          console.log("TimeUpdate detektovao kraj videa pre @ended događaja!");
+          handleVideoEnded();
+        }
+      }
+    };
+
+
 
     const splitTags = (tagsString) => {
       if (!tagsString) return [];
@@ -160,6 +303,7 @@ export default {
 
     // --------CHAT STREAMING--------
     const connectToChat = () => {
+      console.log("Inicijalizacija chata za video:", videoId);
       // Povezujemo se na endpoint koji si definisao u WebSocketConfig (/socket)
       const socket = new SockJS("http://localhost/socket");
       stompClient = Stomp.over(socket);
@@ -215,7 +359,7 @@ export default {
     };
     //---------------------------------
 
-    const loadVideo = async () => {
+    /*const loadVideo = async () => {
       const res = await axios.get(`http://localhost/api/videoPosts/${videoId}`);
       video.value = res.data;
       videoUrl.value = `http://localhost/${res.data.videoPath.replace(/\\/g, '/')}`;
@@ -230,7 +374,94 @@ export default {
         } catch (err) {
           liked.value = false;
         }
+    };*/
+
+    //za zakazani režim
+    const loadVideo = async () => {
+      try {
+        // 1. Resetuj stanje pre učitavanja
+        isWaiting.value = false;
+        if (countdownTimer) clearInterval(countdownTimer);
+
+        // 2. Poziv API-ja
+        const res = await axios.get(`http://localhost/api/videoPosts/${videoId}/play`);
+        const data = res.data;
+        video.value = data;
+
+        // 3. Podešavanje putanja
+        //videoUrl.value = `http://localhost/${data.videoPath.replace(/\\/g, '/')}`;
+        const normalizedPath = data.videoPath.replace(/\\/g, '/');
+        videoUrl.value = `http://localhost/${normalizedPath}`;
+
+
+        thumbnailUrl.value = `http://localhost/api/videoPosts/${videoId}/thumbnail`;
+
+        // 4. Ažuriranje brojača
+        likeCount.value = data.likeCount;
+        viewCount.value = data.viewCount;
+        commentCount.value = data.commentCount;
+
+        // 5. UČITAVANJE KOMENTARA (Ovo je nedostajalo ili bagovalo)
+        currentPage.value = 0;
+        hasMoreComments.value = true;
+        comments.value = [];
+        await loadComments(false);
+
+        // 6. LOGIKA ZA ZAKAZANI PRIKAZ
+
+        const now = new Date().getTime();
+        const scheduledAtTime = data.scheduledAt ? new Date(data.scheduledAt).getTime() : 0;
+
+
+        if (scheduledAtTime > now) {
+          // VIDEO JE U BUDUĆNOSTI
+          isWaiting.value = true;
+          console.log("Video je zakazan za:", new Date(scheduledAtTime).toLocaleString());
+          startCountdown(new Date(scheduledAtTime));
+        } else {
+          // VIDEO JE DOSTUPAN ILI JE STREAM U TOKU
+          isWaiting.value = false;
+
+          nextTick(() => {
+            if (videoPlayer.value) {
+              console.log("Trajanje videa:", videoPlayer.value.duration);
+              console.log("Trenutno vreme (offset):", videoPlayer.value.currentTime);
+
+              // Postavi offset ako postoji (za simulaciju striminga)
+              if (data.offsetSeconds > 0) {
+                videoPlayer.value.currentTime = data.offsetSeconds;
+              }
+
+              // Automatski Play (Browseri dozvoljavaju ako je korisnik kliknuo na video u listi)
+              videoPlayer.value.play().catch(err => {
+                console.warn("Autoplay blocked. User must interact with the page first.", err);
+              });
+            }
+          });
+        }
+
+        // 7. Provera lajka
+        if (auth.token) {
+          try {
+            const likedRes = await axios.get(`http://localhost/api/videoPosts/${videoId}/liked`);
+            liked.value = likedRes.data;
+          } catch (err) {
+            liked.value = false;
+          }
+        }
+
+      } catch (err) {
+        console.error("Kritična greška pri učitavanju videa:", err);
+      }
     };
+
+
+
+
+
+
+
+
 
     const loadComments = async (append = false) => {
       if (loadingComments.value || !hasMoreComments.value) return;
@@ -367,18 +598,32 @@ const startWatchParty = () => {
 
     onMounted(async () => {
 
-      await loadVideo();
-      await loadComments();
       window.addEventListener('scroll', handleScroll);
-      if (video.value.isStreaming) { //STREAMING CHAT DOZVOLJEN SAMO KADA JE VIDEO U STREAM MODU
+
+      await loadVideo();
+
+      console.log("Status streaminga nakon loada:", video.value.isStreaming);
+
+      if (video.value.isStreaming) {
+        console.log("Pokrećem konekciju na chat...");
         connectToChat();
       }
+
+      await loadComments();
+      //window.addEventListener('scroll', handleScroll);
+      /*if (video.value.isStreaming) { //STREAMING CHAT DOZVOLJEN SAMO KADA JE VIDEO U STREAM MODU
+        console.log("Video je streaming, povezujem se na chat...");
+        connectToChat();
+      }*/
     });
 
     onUnmounted(() => {
       window.removeEventListener('scroll', handleScroll);
       if (stompClient !== null) {
         stompClient.disconnect();
+      }
+      if (countdownTimer) {
+        clearInterval(countdownTimer);
       }
     });
 
@@ -403,10 +648,20 @@ const startWatchParty = () => {
       chatWindow,
       sendChatMessage,
       chatError,
+
       watchPartyRoomId,
       watchPartyError,
       createAndStartWatchParty,
-      startWatchParty
+      startWatchParty,
+
+      videoPlayer,
+      isWaiting,
+      countdownText,
+      startCountdown,
+      handleVideoEnded,
+      checkVideoProgress,
+      isEnding,
+
     };
   },
 };
@@ -449,6 +704,32 @@ video {
   max-width: 800px;
   display: block;
   background-color: #000;
+}
+
+.scheduled-overlay {
+  width: 100%;
+  aspect-ratio: 16 / 9; /* Da prati dimenzije videa */
+  background: #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.countdown-box i {
+  font-size: 3rem;
+  color: #ff3d00;
+  margin-bottom: 15px;
+}
+
+.timer {
+  font-size: 2.5rem;
+  font-weight: bold;
+  font-family: 'Courier New', Courier, monospace;
+  margin: 10px 0;
+  color: #ff3d00;
 }
 
 .video-meta {
@@ -639,6 +920,25 @@ video {
 }
 
 .video-content { flex: 3; min-width: 0; } /* Video zauzima više mesta */
+
+/* Dodaj ovo u <style scoped> */
+.chat-bubble.system-msg {
+  background-color: #fff3e0 !important; /* Svetlo narandžasta */
+  border: 1px solid #ff9800 !important;
+  color: #e65100 !important;
+  padding: 12px !important;
+  margin: 10px 0;
+  border-radius: 8px;
+  font-weight: bold;
+  text-align: center;
+  animation: pulse 1.5s infinite; /* Blago blinkanje da privuče pažnju */
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
 
 .chat-sidebar {
   flex: 1;
