@@ -409,7 +409,9 @@ export default {
       formData.append('title', this.title);
       formData.append('description', this.description);
       formData.append('tags', this.selectedTags.join(','));
-      formData.append('scheduledAt', this.scheduledAt);
+      if (this.scheduledAt) {
+        formData.append('scheduledAt', this.scheduledAt);
+      }
 
       // Ako je korisnik izabrao lokaciju iz liste
       if (this.selectedLocation) {

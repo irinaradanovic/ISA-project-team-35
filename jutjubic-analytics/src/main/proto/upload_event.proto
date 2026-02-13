@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+option java_package = "com.isa.jutjubic.mq";
+option java_outer_classname = "UploadEventProtoMessage";
+
+message UploadEventProto {
+  int64 id = 1;
+  string title = 2;
+  string author = 3;
+  int64 sizeBytes = 4;
+}
