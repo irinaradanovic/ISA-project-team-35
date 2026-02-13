@@ -251,7 +251,7 @@ export default {
           finally {
             isEnding.value = false; // Resetuj za svaki slučaj na kraju
           }
-        }, 7000);
+        }, 5000);
       }
     };
 
