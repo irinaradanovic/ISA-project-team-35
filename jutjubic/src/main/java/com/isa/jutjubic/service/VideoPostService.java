@@ -210,7 +210,7 @@ public VideoPostDto createPost(VideoPostUploadDto dto) throws IOException {
             byte[] jsonBytes = mapper.writeValueAsBytes(jsonEvent);
             long jsonSerTime = System.nanoTime() - jsonSerStart;
 
-            // Šalji kao RAW bytes, bez konverzije
+            // salji kao raw bytes, bez konverzije
             Message jsonMessage = MessageBuilder
                     .withBody(jsonBytes)
                     .setContentType(MessageProperties.CONTENT_TYPE_JSON)
@@ -237,7 +237,7 @@ public VideoPostDto createPost(VideoPostUploadDto dto) throws IOException {
         byte[] protoBytes = protoEvent.toByteArray();
         long protoSerTime = System.nanoTime() - protoSerStart;
 
-        // Šalji kao RAW bytes
+        // salji kao raw bytes
         Message protoMessage = MessageBuilder
                 .withBody(protoBytes)
                 .setContentType("application/protobuf")

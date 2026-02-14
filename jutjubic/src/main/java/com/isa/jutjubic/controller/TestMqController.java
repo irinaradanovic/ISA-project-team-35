@@ -22,9 +22,9 @@ public class TestMqController {
     public String runTest() {
         VideoPost sample = repo.findAll().stream()
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("Baza je prazna!"));
+                .orElseThrow(() -> new RuntimeException("Baza je prazna"));
 
-        // Eksplicitno inicijalizujemo lazy proxy
+
         sample.getOwner().getUsername();
 
         for(int i = 0; i < 50; i++) {

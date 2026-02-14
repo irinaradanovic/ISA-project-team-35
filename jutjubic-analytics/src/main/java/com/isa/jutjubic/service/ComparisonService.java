@@ -15,7 +15,7 @@ public class ComparisonService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // Čuvamo: [0]=sizeBytes, [1]=deserNanos
+    // [0]=sizeBytes, [1]=deserNanos
     private final List<long[]> jsonStats = new ArrayList<>();
     private final List<long[]> protoStats = new ArrayList<>();
 
@@ -64,7 +64,7 @@ public class ComparisonService {
         int jsonCount = jsonStats.size();
         int protoCount = protoStats.size();
 
-        // Ispiši izveštaj kad imamo bar 50 od oba formata
+        // Ispisi izvestaj kad imamo bar 50 od oba formata
         if (jsonCount >= 50 && protoCount >= 50
                 && (jsonCount == 50 || protoCount == 50
                 || jsonCount % 10 == 0 || protoCount % 10 == 0)) {
