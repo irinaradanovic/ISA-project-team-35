@@ -50,6 +50,7 @@ public class SecurityConfig {
                         .requestMatchers("/socket/**").permitAll()  // omogucava web socket handshake
                         .requestMatchers("/api/cluster/**").permitAll() // Dozvoli  custom health check
                         .requestMatchers("/actuator/**").permitAll()    // Dozvoli Spring Actuator
+                        .requestMatchers("/api/test-mq").permitAll()
                         .anyRequest().authenticated() // sve ostalo zahteva autentifikaciju
                 )
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, userDetailsService),

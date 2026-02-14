@@ -1,6 +1,6 @@
 package com.isa.jutjubic.service;
 
-
+import com.isa.jutjubic.dto.UploadEventDto;
 import com.isa.jutjubic.dto.VideoPostDto;
 import com.isa.jutjubic.dto.VideoPostUploadDto;
 import com.isa.jutjubic.model.GeoLocation;
@@ -9,6 +9,7 @@ import com.isa.jutjubic.model.VideoPost;
 import com.isa.jutjubic.repository.UserRepository;
 import com.isa.jutjubic.repository.VideoPostRepository;
 import com.isa.jutjubic.security.utils.SecurityUtils;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
@@ -21,6 +22,10 @@ import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageBuilder;
+import org.springframework.amqp.core.MessageProperties;
 
 import javax.naming.ServiceUnavailableException;
 import java.io.IOException;
@@ -58,6 +63,9 @@ public class VideoPostService {
 
     @Autowired
     private TranscodingProducer transcodingProducer;
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
 
     public VideoPostDto mapToDto(VideoPost post) {
         VideoPostDto dto = new VideoPostDto();
@@ -166,6 +174,7 @@ public VideoPostDto createPost(VideoPostUploadDto dto) throws IOException {
                 @Override
                 public void afterCommit() {
                     transcodingProducer.enqueue(post.getId(), post.getVideoPath(), outputPath);
+                    sendMqComparison(post, dto.getVideo().getSize());
 
                 }
             }
@@ -184,7 +193,69 @@ public VideoPostDto createPost(VideoPostUploadDto dto) throws IOException {
         if (videoPath != null) fileStorageService.deleteFile(videoPath);
         throw e;
     }
+
+
 }
+
+    public void sendMqComparisonRaw(Long videoId, String title, String author, long size) {
+
+        UploadEventDto jsonEvent = new UploadEventDto(videoId, title, author, size);
+
+        // --- JSON ---
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper =
+                    new com.fasterxml.jackson.databind.ObjectMapper();
+
+            long jsonSerStart = System.nanoTime();
+            byte[] jsonBytes = mapper.writeValueAsBytes(jsonEvent);
+            long jsonSerTime = System.nanoTime() - jsonSerStart;
+
+            // salji kao raw bytes, bez konverzije
+            Message jsonMessage = MessageBuilder
+                    .withBody(jsonBytes)
+                    .setContentType(MessageProperties.CONTENT_TYPE_JSON)
+                    .build();
+            rabbitTemplate.send("video.json.queue", jsonMessage);
+
+            System.out.printf("[JSON SENT] size=%d B, serTime=%d µs%n",
+                    jsonBytes.length, jsonSerTime / 1000);
+
+        } catch (Exception e) {
+            System.err.println("JSON send failed: " + e.getMessage());
+        }
+
+        // --- Protobuf ---
+        com.isa.jutjubic.mq.UploadEventProtoMessage.UploadEventProto protoEvent =
+                com.isa.jutjubic.mq.UploadEventProtoMessage.UploadEventProto.newBuilder()
+                        .setId(videoId)
+                        .setTitle(title)
+                        .setAuthor(author)
+                        .setSizeBytes(size)
+                        .build();
+
+        long protoSerStart = System.nanoTime();
+        byte[] protoBytes = protoEvent.toByteArray();
+        long protoSerTime = System.nanoTime() - protoSerStart;
+
+        // salji kao raw bytes
+        Message protoMessage = MessageBuilder
+                .withBody(protoBytes)
+                .setContentType("application/protobuf")
+                .build();
+        rabbitTemplate.send("video.proto.queue", protoMessage);
+
+        System.out.printf("[PROTO SENT] size=%d B, serTime=%d µs%n",
+                protoBytes.length, protoSerTime / 1000);
+    }
+
+     public void sendMqComparison(VideoPost post, long size) {
+        sendMqComparisonRaw(
+                post.getId().longValue(),
+                post.getTitle(),
+                post.getOwner().getUsername(),
+                size
+        );
+    }
 
     @Transactional
     public void deletePost(Integer id) throws IOException {
