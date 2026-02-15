@@ -15,11 +15,14 @@ public class JwtAuthenticationFilter extends GenericFilter {
 
     private final JwtTokenProvider tokenProvider;
     private final CustomUserDetailsService userDetailsService;
+    private final UserTracker userTracker;
 
     public JwtAuthenticationFilter(JwtTokenProvider tokenProvider,
-                                   CustomUserDetailsService userDetailsService) {
+                                   CustomUserDetailsService userDetailsService,
+                                   UserTracker userTracker) {
         this.tokenProvider = tokenProvider;
         this.userDetailsService = userDetailsService;
+        this.userTracker = userTracker;
     }
 
     @Override
@@ -39,23 +42,28 @@ public class JwtAuthenticationFilter extends GenericFilter {
             String token = header.substring(7);
             String email = tokenProvider.getEmailFromToken(token);
 
-            var userDetails =
-                    userDetailsService.loadUserByUsername(email);
+            if (email != null) {
+                // 3. EVIDENTIRAJ AKTIVNOST
+                userTracker.logActivity(email);
 
-            var authentication =
-                    new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            userDetails.getAuthorities()
-                    );
+                var userDetails =
+                        userDetailsService.loadUserByUsername(email);
 
-            authentication.setDetails(
-                    new WebAuthenticationDetailsSource()
-                            .buildDetails(httpRequest)
-            );
+                var authentication =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
+                        );
 
-            SecurityContextHolder.getContext()
-                    .setAuthentication(authentication);
+                authentication.setDetails(
+                        new WebAuthenticationDetailsSource()
+                                .buildDetails(httpRequest)
+                );
+
+                SecurityContextHolder.getContext()
+                        .setAuthentication(authentication);
+            }
         }
 
         chain.doFilter(request, response);
