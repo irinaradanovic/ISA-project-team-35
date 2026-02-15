@@ -451,7 +451,8 @@ export default {
         }
 
       } catch (err) {
-        console.error("Kritična greška pri učitavanju videa:", err);
+        console.error("Greška pri učitavanju videa:", err);
+        setTimeout(loadVideo, 5000); // Ako pukne skroz, probaj opet za 5s
       }
     };
 
