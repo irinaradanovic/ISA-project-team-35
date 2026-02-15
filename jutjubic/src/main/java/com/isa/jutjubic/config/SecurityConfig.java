@@ -2,6 +2,7 @@ package com.isa.jutjubic.config;
 
 import com.isa.jutjubic.security.jwt.JwtAuthenticationFilter;
 import com.isa.jutjubic.security.jwt.JwtTokenProvider;
+import com.isa.jutjubic.security.jwt.UserTracker;
 import com.isa.jutjubic.security.service.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -28,6 +29,7 @@ public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserTracker userTracker;
 
    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -53,7 +55,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/test-mq").permitAll()
                         .anyRequest().authenticated() // sve ostalo zahteva autentifikaciju
                 )
-                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, userDetailsService),
+                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, userDetailsService, userTracker),
                         UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

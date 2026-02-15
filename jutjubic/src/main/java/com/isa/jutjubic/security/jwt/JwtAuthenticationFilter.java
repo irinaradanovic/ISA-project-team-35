@@ -15,11 +15,14 @@ public class JwtAuthenticationFilter extends GenericFilter {
 
     private final JwtTokenProvider tokenProvider;
     private final CustomUserDetailsService userDetailsService;
+    private final UserTracker userTracker;
 
     public JwtAuthenticationFilter(JwtTokenProvider tokenProvider,
-                                   CustomUserDetailsService userDetailsService) {
+                                   CustomUserDetailsService userDetailsService,
+                                   UserTracker userTracker) {
         this.tokenProvider = tokenProvider;
         this.userDetailsService = userDetailsService;
+        this.userTracker = userTracker;
     }
 
     @Override
@@ -31,34 +34,36 @@ public class JwtAuthenticationFilter extends GenericFilter {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         String header = httpRequest.getHeader("Authorization");
 
-
         if (header != null && header.startsWith("Bearer ")) {
             try {
                 String token = header.substring(7);
-
                 String email = tokenProvider.getEmailFromToken(token);
 
-                var userDetails =
-                        userDetailsService.loadUserByUsername(email);
+                //Logujemo aktivnost korisnika za Grafanu
+                if (email != null) {
+                    userTracker.logActivity(email);
+                }
 
-                var authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.getAuthorities()
-                        );
+                var userDetails = userDetailsService.loadUserByUsername(email);
 
-                authentication.setDetails(
-                        new WebAuthenticationDetailsSource()
-                                .buildDetails(httpRequest)
+                var authentication = new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities()
                 );
+
+            authentication.setDetails(
+                    new WebAuthenticationDetailsSource()
+                            .buildDetails(httpRequest)
+            );
 
                 SecurityContextHolder.getContext()
                         .setAuthentication(authentication);
+
             } catch(Exception e) {
-                // Logujemo da je baza pala, ali NE PREKIDAMO request.
+
                 System.err.println("Security Filter: Neuspešna autentifikacija (Baza nedostupna ili loš token). Nastavljam kao anoniman korisnik.");
-             }
+            }
         }
         chain.doFilter(request, response);
     }
