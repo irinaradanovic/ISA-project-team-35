@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.MessageProperties;
+import org.springframework.amqp.AmqpException;
 
 import javax.naming.ServiceUnavailableException;
 import java.io.IOException;
@@ -169,15 +170,37 @@ public VideoPostDto createPost(VideoPostUploadDto dto) throws IOException {
         String filename = Paths.get(videoPath).getFileName().toString();
         String outputPath = Paths.get("uploads", "videos-transcoded", post.getId() + "_" + filename).toString();
 
-        TransactionSynchronizationManager.registerSynchronization(
-            new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    transcodingProducer.enqueue(post.getId(), post.getVideoPath(), outputPath);
-                    sendMqComparison(post, dto.getVideo().getSize());
 
+        String ownerUsername = owner.getUsername();
+        long fileSize = dto.getVideo().getSize();
+
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        // Transcode — ne smije pasti upload
+                        try {
+                            transcodingProducer.enqueue(post.getId(), post.getVideoPath(), outputPath);
+                        } catch (Exception e) {
+                            System.err.println("[MQ DOWN] Transkodiranje nije pokrenuto za videoId="
+                                    + post.getId() + ": " + e.getMessage());
+                        }
+
+                        // MQ poredjenje json protobuf — ne smije pasti upload
+                        try {
+                            sendMqComparisonRaw(
+                                    post.getId().longValue(),
+                                    post.getTitle(),
+                                    ownerUsername,
+                                    fileSize
+                            );
+                        } catch (Exception e) {
+                            System.err.println("[MQ DOWN] MQ comparison preskocen za videoId="
+                                    + post.getId() + ": " + e.getMessage());
+                        }
+                    }
                 }
-            }
         );
 
         if (post.getLocation() != null) {
@@ -196,6 +219,7 @@ public VideoPostDto createPost(VideoPostUploadDto dto) throws IOException {
 
 
 }
+
 
     public void sendMqComparisonRaw(Long videoId, String title, String author, long size) {
 
@@ -280,26 +304,8 @@ public VideoPostDto createPost(VideoPostUploadDto dto) throws IOException {
                     .evict(post.getThumbnailPath());
         }
 
-        // 1. obrisi fajlove sa diska
-      /*  if (post.getThumbnailPath() != null) {
-            fileStorageService.deleteFile(post.getThumbnailPath()); // ovo uklanja i iz keša
-        }
-        if (post.getVideoPath() != null) {
-            Path videoPath = Paths.get(post.getVideoPath());
-            if (Files.exists(videoPath)) {
-                Files.delete(videoPath);
-            }
-        }  */
-
-        // 2. obrisi iz baze
-        //postRepository.delete(post);
     }
 
-    /*@Retryable(retryFor = { DataAccessResourceFailureException.class }, maxAttempts = 2, backoff = @Backoff(delay = 3000)) //dodato za 3.11
-    public VideoPostDto getById(Integer Id){
-        VideoPost post =  postRepository.findByIdWithOwner(Id).orElseThrow(() -> new NoSuchElementException("VideoPost not found with id " + Id));
-        return mapToDto(post);
-    }*/
 
     @Retryable(retryFor = { DataAccessResourceFailureException.class }, maxAttempts = 2, backoff = @Backoff(delay = 3000))
     public VideoPostDto getById(Integer id){
@@ -335,32 +341,16 @@ public VideoPostDto createPost(VideoPostUploadDto dto) throws IOException {
                 .getSeconds();
     }
 
-    /*public VideoPlaybackResponse getVideoForPlayback(Integer id) {
 
-        VideoPost post = postRepository.findByIdForPlayback(id)
-                .orElseThrow(() -> new NoSuchElementException("Video not found"));
-
-
-        long offsetSeconds = calculateStreamingOffsetSeconds(post);
-
-        return new VideoPlaybackResponse(
-                post.getId(),
-                post.getVideoPath(),
-                offsetSeconds,
-                post.getScheduledAt(), // PROSLEDI DATUM OVDE
-                post.isStreaming()
-        );
-    }*/
-
+    @Retryable(retryFor = { DataAccessResourceFailureException.class }, maxAttempts = 2, backoff = @Backoff(delay = 3000))
     public VideoPostDto getVideoForPlayback(Integer id) {
-        // 1. Dobavljanje entiteta iz baze
+        // Dobavljanje entiteta iz baze
         VideoPost post = postRepository.findByIdForPlayback(id)
                 .orElseThrow(() -> new NoSuchElementException("Video not found"));
 
-        // 2. Izračunavanje offseta (tvoja postojeća logika)
+        // Izračunavanje offseta (tvoja postojeća logika)
         long offsetSeconds = calculateStreamingOffsetSeconds(post);
 
-        // 3. Kreiranje DTO-a (ovde prosleđuješ SVE podatke koje front očekuje)
         VideoPostDto dto = new VideoPostDto();
         dto.setId(post.getId());
         dto.setTitle(post.getTitle());
@@ -371,10 +361,10 @@ public VideoPostDto createPost(VideoPostUploadDto dto) throws IOException {
         dto.setCreatedAt(post.getCreatedAt());
         //dto.setCity(post.getCity());
         //dto.setCountry(post.getCountry());
-        dto.setOwnerUsername(post.getOwner().getUsername()); // Pazi na NullPointer ako owner nije učitan
+        dto.setOwnerUsername(post.getOwner().getUsername());
         dto.setOwnerId(post.getOwner().getId());
 
-        // KLJUČNO: Ovde puniš brojače koji su ti falili!
+
         dto.setLikeCount(post.getLikeCount());
         dto.setViewCount(post.getViewCount());
         dto.setCommentCount(post.getCommentCount());
@@ -382,7 +372,7 @@ public VideoPostDto createPost(VideoPostUploadDto dto) throws IOException {
         dto.setScheduledAt(post.getScheduledAt());
         dto.setStreaming(post.isStreaming());
 
-        // DODAJEMO OFFSET koji si uvela u prethodnom koraku u VideoPostDto
+
         dto.setOffsetSeconds(offsetSeconds);
 
         return dto;
@@ -445,15 +435,21 @@ public VideoPostDto createPost(VideoPostUploadDto dto) throws IOException {
         return videos.stream().map(this::mapToDto).toList();
     }
 
-    //ako je proslo 2 pokusaja, 6 sekundi
-    @Recover
-    public VideoPostDto recoverGetById(DataAccessResourceFailureException e, Integer id) {
-        System.out.println("[RECOVER] getById failed for id=" + id + ": " + e.getMessage());
-        throw new RuntimeException("Baza podataka je trenutno nedostupna.");
-    }
 
     @Recover
     public void recoverIncrementViews(DataAccessResourceFailureException e, Integer videoId) {
         System.out.println("[RECOVER] incrementViews failed for videoId=" + videoId + " - preskačemo");
     }
+    //ako je proslo 2 pokusaja, 6 sekundi
+    @Recover
+    public VideoPostDto recoverGetVideoForPlayback(DataAccessResourceFailureException e, Integer id) {
+        System.err.println("[RECOVER] Baza nedostupna");
+        VideoPostDto fallback = new VideoPostDto();
+        fallback.setId(id);
+        fallback.setTitle("Sistem je trenutno u rezimu oporavka...");
+        fallback.setVideoPath("");
+        return fallback;
+    }
+
+
 }

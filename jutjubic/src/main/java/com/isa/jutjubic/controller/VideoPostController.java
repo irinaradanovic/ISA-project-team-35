@@ -45,7 +45,9 @@ public class VideoPostController {
     @GetMapping("/{id}/play")
     public ResponseEntity<?> getVideoForPlayback(@PathVariable Integer id) {
         try {
-            return ResponseEntity.ok(postService.getVideoForPlayback(id));
+            VideoPostDto dto = postService.getVideoForPlayback(id);
+            postService.incrementViews(id);
+            return ResponseEntity.ok(dto);
         } catch (NoSuchElementException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body("Video not found.");
