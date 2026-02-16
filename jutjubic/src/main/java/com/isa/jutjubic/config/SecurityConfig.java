@@ -40,7 +40,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll() // registracija i login dostupni svima
                         .requestMatchers("/uploads/**").permitAll() // DOZVOLI PRISTUP ENDPOINTU ZA THUMBNAIL I VIDEE
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popular-videos").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popular-videos").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/popular-videos/run").permitAll()
                         .requestMatchers("/api/").permitAll()  //dozvoli home
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/videoPosts/**").permitAll() //dozvoli pregled vide

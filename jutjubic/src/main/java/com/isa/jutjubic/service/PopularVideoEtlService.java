@@ -7,6 +7,7 @@ import com.isa.jutjubic.repository.VideoPostRepository;
 import com.isa.jutjubic.repository.VideoViewRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -135,5 +136,39 @@ public class PopularVideoEtlService {
         }
 
         log.info("Popular Video ETL completed successfully. Top {} videos stored.", top3.size());
+    }
+
+    /**
+     * SIMULACIJA: Dodaje nasumične preglede svakih 5 minuta.
+     * Ovo puni video_view tabelu "svežim" podacima.
+     */
+    @Scheduled(fixedRate = 300000) // 300.000 ms = 5 minuta
+    @Transactional
+    public void simulateActivity() {
+        log.info("Simulating user activity - adding random views...");
+
+        // 1. Uzmi 10 nasumičnih videa iz baze (ovde koristimo PageRequest kao prečicu)
+        long count = videoPostRepository.count();
+        if (count == 0) return;
+
+        Random random = new Random();
+
+        // Simuliramo 20 novih pregleda u ovom ciklusu
+        for (int i = 0; i < 20; i++) {
+            int idx = random.nextInt((int) count);
+            videoPostRepository.findAll(PageRequest.of(idx, 1))
+                    .getContent()
+                    .stream()
+                    .findFirst()
+                    .ifPresent(video -> {
+                        VideoView view = VideoView.builder()
+                                .video(video)
+                                .user(null) // anonimni pregled
+                                .viewedAt(LocalDateTime.now())
+                                .build();
+                        videoViewRepository.save(view);
+                    });
+        }
+        log.info("Simulated 20 new views for random videos.");
     }
 }

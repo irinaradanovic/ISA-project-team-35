@@ -30,27 +30,37 @@
       </div>
     </div>
 
-    <!-- Popular videos -->
+    <!---Popular Videos-->
     <div v-if="popularVideos.length > 0" class="popular-videos">
       <h3 class="section-header">Popular Videos</h3>
       <div class="video-section">
-        <article v-for="video in popularVideos" :key="video.id" class="video-container">
-          <router-link :to="`/video/${video.id}`" class="thumbnail">
+        <article v-for="video in popularVideos" :key="video.videoId" class="video-container">
+
+          <router-link :to="`/video/${video.videoId}`" class="thumbnail">
             <img class="thumbnail-image" :src="thumbnailUrl(video)" :alt="video.title"/>
           </router-link>
+
           <div class="video-bottom-section">
             <router-link :to="`/user/${video.ownerId}`" class="channel-icon-link">
               <img class="channel-icon" src="@/assets/profile-picture.png" alt="Channel Icon">
             </router-link>
+
             <div class="video-info">
-              <router-link :to="`/video/${video.id}`" class="video-title">{{ video.title }}</router-link>
-              <a href="#" class="channel-name">{{ video.ownerUsername }}</a>
+              <router-link :to="`/video/${video.videoId}`" class="video-title">
+                {{ video.title }}
+              </router-link>
+
+              <router-link :to="`/user/${video.ownerId}`" class="channel-name">
+                {{ video.ownerUsername }}
+              </router-link>
+
               <div class="video-stats">
                 <span>{{ formatDate(video.createdAt) }}</span>
                 <span> • {{ video.viewCount }} views</span>
               </div>
             </div>
           </div>
+
         </article>
       </div>
     </div>

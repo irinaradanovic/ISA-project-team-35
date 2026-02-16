@@ -49,6 +49,10 @@ public class PopularVideoController {
                         .thumbnailPath(pv.getVideo().getThumbnailPath())
                         .popularityScore(pv.getPopularityScore())
                         .rankPosition(pv.getRankPosition())
+                        .ownerId(pv.getVideo().getOwner().getId())
+                        .ownerUsername(pv.getVideo().getOwner().getUsername())
+                        .createdAt(pv.getVideo().getCreatedAt())
+                        .viewCount((long) pv.getVideo().getViewCount())
                         .build()
                 )
                 .collect(Collectors.toList());

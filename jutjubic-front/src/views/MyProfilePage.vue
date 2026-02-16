@@ -159,7 +159,7 @@ const formatDate = (date) => {
 };
 
 const goToVideo = (id) => {
-  router.push('/video/${id}');
+  router.push(`/video/${id}`);
 };
 
 onMounted(async () => {
