@@ -2,6 +2,7 @@ package com.isa.jutjubic.config;
 
 import com.isa.jutjubic.security.jwt.JwtAuthenticationFilter;
 import com.isa.jutjubic.security.jwt.JwtTokenProvider;
+import com.isa.jutjubic.security.jwt.UserTracker;
 import com.isa.jutjubic.security.service.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -28,6 +29,7 @@ public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserTracker userTracker;
 
    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -38,6 +40,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll() // registracija i login dostupni svima
                         .requestMatchers("/uploads/**").permitAll() // DOZVOLI PRISTUP ENDPOINTU ZA THUMBNAIL I VIDEE
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/popular-videos").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/popular-videos/run").permitAll()
                         .requestMatchers("/api/").permitAll()  //dozvoli home
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/videoPosts/**").permitAll() //dozvoli pregled vide
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/comments/**").permitAll() //dozvoli pregled komentara
@@ -47,9 +51,13 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/users/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/map/**").permitAll() //dozvoli mapu
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/map/**").permitAll() // POST map tiles
+                        .requestMatchers("/socket/**").permitAll()  // omogucava web socket handshake
+                        .requestMatchers("/api/cluster/**").permitAll() // Dozvoli  custom health check
+                        .requestMatchers("/actuator/**").permitAll()    // Dozvoli Spring Actuator
+                        .requestMatchers("/api/test-mq").permitAll()
                         .anyRequest().authenticated() // sve ostalo zahteva autentifikaciju
                 )
-                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, userDetailsService),
+                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, userDetailsService, userTracker),
                         UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -89,20 +97,5 @@ public class SecurityConfig {
             }
         };
     }
-
-  /*  @Bean
-    public WebMvcConfigurer corsConfigurer() {
-        return new WebMvcConfigurer() {
-            @Override
-            public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/**")
-                        .allowedOrigins("http://localhost:5173") // front
-                        .allowedHeaders("*")
-                        //.allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                        .allowedMethods("*")
-                        .allowCredentials(true);
-            }
-        };
-    } */
 
 }

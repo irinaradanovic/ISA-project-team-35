@@ -1,14 +1,13 @@
 package com.isa.jutjubic.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import java.time.LocalDateTime;
 
 @NoArgsConstructor
 @AllArgsConstructor
-@Getter
-@Setter
+@Getter @Setter
 @ToString
-
 public class VideoPostDto {
     //za prikaz
     private Integer id;
@@ -29,5 +28,12 @@ public class VideoPostDto {
     private int likeCount;
     private int commentCount;
     private int viewCount;
+
+    private LocalDateTime scheduledAt; // za zakazani režim
+
+    @JsonProperty("isStreaming")  //da u jsonu ispisuje isStreaming umesto streaming
+    private boolean isStreaming; // 3.10 dodato
+
+    private long offsetSeconds; //3.8
 }
 

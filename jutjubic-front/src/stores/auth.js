@@ -4,7 +4,7 @@ import axios from 'axios';
 import jwt_decode from "jwt-decode";
 
 // Axios base URL za backend
-axios.defaults.baseURL = 'http://localhost:8080/api';
+axios.defaults.baseURL = 'http://localhost/api';
 
 export const useAuthStore = defineStore('auth', () => {
     const user = ref(null);        // čuva podatke o korisniku
@@ -96,12 +96,21 @@ import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
  // npm install jwt-decode
 
-axios.defaults.baseURL = 'http://localhost:8080/api';
+axios.defaults.baseURL = 'http://localhost/api';
 
 export const useAuthStore = defineStore('auth', () => {
     const token = ref(localStorage.getItem('token') || null);
     const user = ref(null);
     const error = ref(null);
+
+    const extractUserFromToken = (rawToken) => {
+        const decoded = jwtDecode(rawToken);
+        console.log("Sadržaj JWT tokena:", decoded);
+        return {
+            email: decoded.sub,
+            username: decoded.username || decoded.sub  // fallback na email ako nema username
+        };
+    };
 
     // ==========================
     // INIT USER FROM TOKEN
@@ -109,7 +118,9 @@ export const useAuthStore = defineStore('auth', () => {
     if (token.value) {
         try {
             const decoded = jwtDecode(token.value);
-            user.value = { email: decoded.sub }; // sub = email iz JWT
+            console.log("Sadržaj JWT tokena:", decoded);  //DEBUG
+            //user.value = { email: decoded.sub }; // sub = email iz JWT
+            user.value = extractUserFromToken(token.value);
             axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`;
         } catch (err) {
             console.error('Invalid token:', err);
@@ -140,7 +151,11 @@ export const useAuthStore = defineStore('auth', () => {
         try {
             const response = await axios.post('/auth/login', formData);
             token.value = response.data.token;
-            user.value = { email: formData.email };
+            const decoded = jwtDecode(token.value);
+            user.value = {
+                email: decoded.sub,
+                username: decoded.username || decoded.sub // Ako nema username, koristi email
+            };
             localStorage.setItem('token', token.value);
             axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`;
             return true;
