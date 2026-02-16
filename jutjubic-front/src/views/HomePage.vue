@@ -30,6 +30,32 @@
       </div>
     </div>
 
+    <!-- Popular videos -->
+    <div v-if="popularVideos.length > 0" class="popular-videos">
+      <h3 class="section-header">Popular Videos</h3>
+      <div class="video-section">
+        <article v-for="video in popularVideos" :key="video.id" class="video-container">
+          <router-link :to="`/video/${video.id}`" class="thumbnail">
+            <img class="thumbnail-image" :src="thumbnailUrl(video)" :alt="video.title"/>
+          </router-link>
+          <div class="video-bottom-section">
+            <router-link :to="`/user/${video.ownerId}`" class="channel-icon-link">
+              <img class="channel-icon" src="@/assets/profile-picture.png" alt="Channel Icon">
+            </router-link>
+            <div class="video-info">
+              <router-link :to="`/video/${video.id}`" class="video-title">{{ video.title }}</router-link>
+              <a href="#" class="channel-name">{{ video.ownerUsername }}</a>
+              <div class="video-stats">
+                <span>{{ formatDate(video.createdAt) }}</span>
+                <span> • {{ video.viewCount }} views</span>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+
+
 
     <!-- Videos -->
     <div class="videos">
@@ -167,6 +193,14 @@ body {
   border-top: 1px solid #e0e0e0;
 }
 
+.popular-videos {
+  margin: 20px 0;
+}
+.popular-videos .section-header {
+  margin-bottom: 1rem;
+}
+
+
 .video-section:first-child {
   border-top: none;
 }
@@ -282,6 +316,8 @@ export default {
     const columnsPerRow = ref(4);
     const rowsPerSection = ref(2);
 
+    const popularVideos = ref([]);
+
     const shelf = ref(null);
 
     const videosPerSection = computed(() => {
@@ -345,6 +381,15 @@ export default {
         });
     };
 
+    const loadPopularVideos = async () => {
+      try {
+        const res = await axios.get('http://localhost/api/popular-videos'); // endpoint koji vraća 3 najpopularnija videa
+        popularVideos.value = res.data;
+      } catch (err) {
+        console.error('Error loading popular videos:', err);
+      }
+    };
+
     const loadMoreVideos = () => {
       if (loading.value || !hasMore.value) return;
       const nextPage = currentPage.value + 1;
@@ -401,6 +446,7 @@ export default {
 
     onMounted(() => {
       loadPage(0);
+      loadPopularVideos();
       window.addEventListener('scroll', handleScroll);
       window.addEventListener('resize', calculateColumns);
       calculateColumns();
@@ -422,7 +468,9 @@ export default {
       thumbnailUrl,
       streamingVideos,
       scrollShelf,
-      shelf
+      shelf,
+      popularVideos,
+      loadPopularVideos,
     };
   }
 };
